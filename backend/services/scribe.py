@@ -18,7 +18,12 @@ def get_audio_duration(audio_path: str) -> float:
 class Transcriber:
     def __init__(self, model_name="base"):
         self.model_name = model_name
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        if torch.cuda.is_available():
+            self.device = "cuda"
+        elif torch.backends.mps.is_available():
+            self.device = "mps"
+        else:
+            self.device = "cpu"
         self._model = None
         self.lock = threading.Lock()
 
