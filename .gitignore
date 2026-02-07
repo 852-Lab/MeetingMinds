@@ -49,6 +49,18 @@ iOSInjectionProject/
 *.db-wal
 *.m4a
 *.wav
+*.mp3
+*.mp4
+*.part
+
+# Backend storage
+backend/storage/*
+!backend/storage/.gitkeep
 
 # User data
 ~/Library/Application Support/MeetingMind/
+
+# Logs
+*.log
+backend.log
+frontend.log

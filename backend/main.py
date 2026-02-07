@@ -7,6 +7,9 @@ import uuid
 from services.downloader import download_youtube_audio
 from services.audio import extract_audio
 from services.youtube import transcribe_youtube
+from services.scribe import transcriber
+from services.llm import LLMGenerator
+from fastapi.responses import StreamingResponse
 
 app = FastAPI(title="MeetingMind Backend")
 
@@ -41,22 +44,17 @@ async def download_video(request: DownloadRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/youtube-transcribe")
 async def youtube_transcribe(request: DownloadRequest):
     """
-    Handles YouTube transcription (captions or Whisper).
+    Handles YouTube transcription (captions or Whisper) with streaming status.
     """
-    try:
-        result = transcribe_youtube(request.url, STORAGE_DIR)
-        return {
-            "message": "Transcription successful",
-            "method": result["method"],
-            "text": result["text"],
-            "file_path": result["file_path"],
-            "segments": result["segments"]
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    def generate():
+        for chunk in transcribe_youtube(request.url, STORAGE_DIR):
+            yield chunk + "\n"
+            
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
@@ -81,12 +79,7 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-from services.scribe import Transcriber
-from services.llm import LLMGenerator
-
 # Services Initialization
-# We load the model once. For production, consider lazy loading or separate worker.
-transcriber = Transcriber(model_name="base")
 llm_client = LLMGenerator(model="llama3.2")
 
 class TranscribeRequest(BaseModel):
