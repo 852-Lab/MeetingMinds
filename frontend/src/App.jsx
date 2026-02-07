@@ -38,14 +38,17 @@ function App() {
   const handleDownload = async () => {
     if (!url) return
     setLoading(true)
-    setStatus('Downloading from YouTube...')
+    setStatus('Processing YouTube URL (this may take a minute if fallback to AI transcription is needed)...')
 
     try {
-      const res = await axios.post('http://localhost:8000/api/download', { url })
-      setStatus('Download complete. Transcribing...')
-      await handleTranscribe(res.data.file_path)
+      // Use the unified transcription API instead of the manual two-step process
+      const res = await axios.post('http://localhost:8000/api/youtube-transcribe', { url })
+      setTranscript(res.data.text)
+      setStatus(`Transcription complete (${res.data.method} method).`)
+      setLoading(false)
     } catch (err) {
-      setStatus(`Error: ${err.message}`)
+      const errorMsg = err.response?.data?.detail || err.message
+      setStatus(`Error: ${errorMsg}`)
       setLoading(false)
     }
   }
