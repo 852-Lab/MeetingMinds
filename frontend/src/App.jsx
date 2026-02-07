@@ -132,7 +132,7 @@ function App() {
 
         {/* Status Bar */}
         {status && (
-          <div className="bg-blue-50 text-blue-700 p-3 rounded mb-6 text-center animate-pulse">
+          <div className={`bg-blue-50 text-blue-700 p-3 rounded mb-6 text-center ${loading ? 'animate-pulse' : ''}`}>
             {status}
           </div>
         )}
