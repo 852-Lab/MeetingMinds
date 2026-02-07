@@ -6,6 +6,7 @@ import os
 import uuid
 from services.downloader import download_youtube_audio
 from services.audio import extract_audio
+from services.youtube import transcribe_youtube
 
 app = FastAPI(title="MeetingMind Backend")
 
@@ -37,6 +38,23 @@ async def download_video(request: DownloadRequest):
     try:
         file_path = download_youtube_audio(request.url, STORAGE_DIR)
         return {"message": "Download successful", "file_path": file_path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/youtube-transcribe")
+async def youtube_transcribe(request: DownloadRequest):
+    """
+    Handles YouTube transcription (captions or Whisper).
+    """
+    try:
+        result = transcribe_youtube(request.url, STORAGE_DIR)
+        return {
+            "message": "Transcription successful",
+            "method": result["method"],
+            "text": result["text"],
+            "file_path": result["file_path"],
+            "segments": result["segments"]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
