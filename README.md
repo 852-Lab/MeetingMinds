@@ -61,89 +61,21 @@ This script will:
 
 - **FFmpeg Error**: Ensure FFmpeg is installed (`brew install ffmpeg` on macOS).
 - **Ollama Error**: Ensure Ollama is running (`ollama serve`) and the model is pulled (`ollama pull llama3.2`).
-
-
-### 8.1 Logging
-
-```swift
-// Logger.swift
-import OSLog
-
-extension Logger {
-    static let audio = Logger(subsystem: "com.meetingmind", category: "audio")
-    static let ai = Logger(subsystem: "com.meetingmind", category: "ai")
-    static let database = Logger(subsystem: "com.meetingmind", category: "database")
-}
-
-// Usage
-Logger.audio.info("Started recording with duration: \(duration)")
-Logger.ai.error("Transcription failed: \(error.localizedDescription)")
-```
-
-### 8.2 Crash Reporting
-
-- Use native macOS crash logs
-- Implement custom error boundary for non-fatal errors
-- User-controlled opt-in for anonymous crash reports (local only)
+- **CSS Not Loading**: If the UI looks unstyled, ensure `@tailwindcss/postcss` is installed in the `frontend` directory and `postcss.config.js` is correctly configured.
 
 ---
 
-## 9. Security Considerations
+## Technical Details
 
-### 9.1 Data Protection
+### Security & Privacy
+- **Localhost Only**: All communication between the frontend, backend, and Ollama stays on `localhost`.
+- **Data Persistence**: Uploaded files are stored in the `backend/storage` directory and are not uploaded to any cloud service.
 
-**Audio Files:**
-- Store in sandboxed application support directory
-- Optional encryption using CryptoKit (AES-GCM)
-- Automatic cleanup of old recordings
-
-**Database:**
-- Use SQLite encryption extension (SQLCipher)
-- Encrypt sensitive fields (meeting titles, transcripts)
-- Secure erase on deletion
-
-### 9.2 Network Security
-
-**Ollama Communication:**
-- Localhost-only connections (no remote access)
-- Verify Ollama server identity
-- Timeout protection against hanging requests
+### Dependencies
+- **Backend**: FastAPI, Uvicorn, OpenAI (for Whisper compatibility), etc.
+- **Frontend**: React, Vite, Tailwind CSS v4, Axios.
 
 ---
 
-## 10. Future Enhancements
+**End of Document**
 
-### 10.1 Advanced Features
-- Real-time transcription during recording
-- Speaker diarization with voice embeddings
-- Sentiment analysis of meeting tone
-- Multi-language translation
-
-### 10.2 Integration Opportunities
-- Calendar sync for automatic meeting detection
-- Slack/Teams webhooks for instant sharing
-- Obsidian/Notion export plugins
-- AppleScript automation support
-
----
-
-## Appendix A: Dependencies
-
-**Swift Package Manager:**
-```swift
-// Package.swift
-dependencies: [
-    .package(url: "https://github.com/groue/GRDB.swift", from: "6.0.0"),
-    .package(url: "https://github.com/Alamofire/Alamofire", from: "5.8.0"),
-    .package(url: "https://github.com/apple/swift-log", from: "1.5.0")
-]
-```
-
-**External Tools:**
-- Ollama (https://ollama.ai) - v0.1.20+
-- Whisper model - Base, Small, or Medium
-- Llama 3.2 or Mistral 7B
-
----
-
-**End of Technical Architecture Document**
