@@ -1,6 +1,4 @@
 import requests
-import sys
-import os
 
 def test_transcription(url, name):
     print(f"\n--- Testing {name} ---")
