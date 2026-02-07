@@ -1,12 +1,23 @@
 import whisper
 import os
 import torch
+import threading
 
 class Transcriber:
     def __init__(self, model_name="base"):
+        self.model_name = model_name
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"Loading Whisper model '{model_name}' on {self.device}...")
-        self.model = whisper.load_model(model_name, device=self.device)
+        self._model = None
+        self.lock = threading.Lock()
+
+    @property
+    def model(self):
+        if self._model is None:
+            with self.lock:
+                if self._model is None:
+                    print(f"Loading Whisper model '{self.model_name}' on {self.device}...")
+                    self._model = whisper.load_model(self.model_name, device=self.device)
+        return self._model
 
     def transcribe(self, audio_path: str, language: str = None) -> dict:
         """
@@ -21,10 +32,9 @@ class Transcriber:
         if language:
             options["language"] = language
 
-        result = self.model.transcribe(audio_path, **options)
+        with self.lock:
+            result = self.model.transcribe(audio_path, **options)
         return result
 
-# Global instance (lazy load or startup load could be better, but for now global)
-# We might want to load this on startup in main.py to avoid delay on first request
-# or keep it here.
+# Global instance (lazy load ensured by property)
 transcriber = Transcriber(model_name="base")
