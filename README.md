@@ -25,30 +25,27 @@ The application consists of two main components:
 
 ## Getting Started
 
-### 1. Start the Backend
+### Quick Start
 
-Open a terminal and run:
+1.  **Start Everything**
 
-```bash
-./backend/run_backend.sh
-```
+    Run the following command in the project root:
 
-This script will:
-- Create a virtual environment (`backend/venv`) if it doesn't exist.
-- Install necessary Python dependencies.
-- Start the FastAPI server on `http://localhost:8000`.
+    ```bash
+    make start
+    ```
 
-### 2. Start the Frontend
+    This will:
+    - Install necessary Python and Node.js dependencies (if needed).
+    - Start the backend server on `http://localhost:8000`.
+    - Start the Vite dev server on `http://localhost:5173`.
 
-Open a second terminal and run:
+2.  **Individual Components**
 
-```bash
-./frontend/run_frontend.sh
-```
-
-This script will:
-- Install necessary Node.js dependencies.
-- Start the Vite dev server on `http://localhost:5173`.
+    If you want to run components separately:
+    - `make backend`: Starts only the backend.
+    - `make frontend`: Starts only the frontend.
+    - `make install`: Installs all dependencies.
 
 ### 3. Usage
 

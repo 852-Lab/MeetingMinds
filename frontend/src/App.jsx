@@ -5,6 +5,7 @@ function App() {
   const [file, setFile] = useState(null)
   const [url, setUrl] = useState('')
   const [status, setStatus] = useState('')
+  const [progress, setProgress] = useState(0)
   const [transcript, setTranscript] = useState('')
   const [summary, setSummary] = useState('')
   const [activeTab, setActiveTab] = useState('transcript')
@@ -38,15 +39,62 @@ function App() {
   const handleDownload = async () => {
     if (!url) return
     setLoading(true)
-    setStatus('Downloading from YouTube...')
+    setStatus('Contacting server...')
+    setProgress(0)
 
     try {
-      const res = await axios.post('http://localhost:8000/api/download', { url })
-      setStatus('Download complete. Transcribing...')
-      await handleTranscribe(res.data.file_path)
+      const response = await fetch('http://localhost:8000/api/youtube-transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() // Keep the last partial line in the buffer
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const data = JSON.parse(line)
+            if (data.type === 'status') {
+              setStatus(data.message)
+              if (data.progress !== undefined) setProgress(data.progress)
+            } else if (data.type === 'progress') {
+              setProgress(data.progress)
+            } else if (data.type === 'error') {
+              setStatus(`Error: ${data.message}`)
+              setLoading(false)
+              setProgress(0)
+              return
+            } else if (data.type === 'complete') {
+              setTranscript(data.text)
+              setStatus(`Transcription complete (${data.method} method).`)
+              setLoading(false)
+              setProgress(0)
+              return
+            }
+          } catch (e) {
+            console.error('Error parsing stream chunk:', e, line)
+          }
+        }
+      }
     } catch (err) {
       setStatus(`Error: ${err.message}`)
       setLoading(false)
+      setProgress(0)
     }
   }
 
@@ -129,8 +177,18 @@ function App() {
 
         {/* Status Bar */}
         {status && (
-          <div className="bg-blue-50 text-blue-700 p-3 rounded mb-6 text-center animate-pulse">
+          <div className={`bg-blue-50 text-blue-700 p-3 rounded mb-2 text-center ${loading ? 'animate-pulse' : ''}`}>
             {status}
+          </div>
+        )}
+
+        {/* Progress Bar */}
+        {loading && progress > 0 && (
+          <div className="w-full bg-gray-200 rounded-full h-2.5 mb-6 overflow-hidden">
+            <div
+              className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${progress}%` }}
+            ></div>
           </div>
         )}
 
