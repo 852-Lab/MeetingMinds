@@ -27,6 +27,7 @@ frontend:
 start:
 	@echo "Starting both backend and frontend..."
 	@# Run both in parallel using & and wait for them
+	open http://localhost:5173
 	cd backend && ./run_backend.sh & \
 	cd frontend && ./run_frontend.sh & \
 	wait

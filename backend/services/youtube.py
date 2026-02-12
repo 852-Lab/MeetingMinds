@@ -32,24 +32,67 @@ def transcribe_youtube(url: str, storage_dir: str):
     
     # Try fetching captions (Case 1)
     try:
-        yield json.dumps({"type": "status", "message": f"Attempting to fetch captions for video: {video_id}..."})
+        yield json.dumps({"type": "status", "message": f"Checking for available YouTube captions..."})
         api = YouTubeTranscriptApi()
-        transcript = api.fetch(video_id)
-        consolidated_text = " ".join([snippet['text'] if isinstance(snippet, dict) else snippet.text for snippet in transcript])
+        transcript_list = api.list(video_id)
         
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(consolidated_text)
+        # Selection logic:
+        # 1. Prefer manual English
+        # 2. Prefer manual Cantonese/Mandarin
+        # 3. Fallback to any manual
+        # 4. Fallback to automatic
+        
+        transcript = None
+        method_desc = ""
+        
+        try:
+            # Try manual English
+            transcript = transcript_list.find_manually_created_transcript(['en'])
+            method_desc = "manual (English)"
+        except:
+            try:
+                # Try manual Cantonese or Mandarin
+                transcript = transcript_list.find_manually_created_transcript(['zh-HK', 'zh-Hans', 'zh-TW', 'zh'])
+                method_desc = f"manual ({transcript.language})"
+            except:
+                try:
+                    # Try any manual
+                    transcript = transcript_list.find_manually_created_transcript()
+                    method_desc = f"manual ({transcript.language})"
+                except:
+                    try:
+                        # Try generated (automatic) English
+                        transcript = transcript_list.find_generated_transcript(['en'])
+                        method_desc = "automatic (English)"
+                    except:
+                        try:
+                            # Try any generated
+                            transcript = transcript_list.find_generated_transcript()
+                            method_desc = f"automatic ({transcript.language})"
+                        except:
+                            transcript = None
+
+        if transcript:
+            yield json.dumps({"type": "status", "message": f"Found {method_desc} captions. Fetching..."})
+            data = transcript.fetch()
+            consolidated_text = " ".join([snippet.text for snippet in data])
             
-        yield json.dumps({
-            "type": "complete",
-            "method": "captions",
-            "text": consolidated_text,
-            "file_path": output_file
-        })
-        return
+            with open(output_file, "w", encoding="utf-8") as f:
+                f.write(consolidated_text)
+                
+            yield json.dumps({
+                "type": "complete",
+                "method": f"captions ({method_desc})",
+                "text": consolidated_text,
+                "file_path": output_file
+            })
+            return
+        else:
+            yield json.dumps({"type": "status", "message": "No captions found on YouTube."})
+
     except Exception as caption_error:
-        yield json.dumps({"type": "status", "message": f"Captions unavailable. Falling back to AI transcription (this will take longer)..."})
-        print(f"Could not fetch captions for {video_id}: {caption_error}")
+        yield json.dumps({"type": "status", "message": f"Captions unavailable or error: {str(caption_error)}. Falling back to AI transcription..."})
+        print(f"Caption fetch failed for {video_id}: {caption_error}")
         
         # Fallback to audio transcription (Case 2)
         audio_path = None
@@ -94,8 +137,30 @@ def transcribe_youtube(url: str, storage_dir: str):
                 raise RuntimeError("Downloaded audio file is empty (0 bytes).")
 
             print(f"Transcribing audio with Whisper: {audio_path} ({file_size} bytes)")
-            result = transcriber.transcribe(audio_path)
-            consolidated_text = result["text"]
+            
+            # Use transcribe_with_progress for real-time updates
+            audio_duration_minutes = None
+            final_result = None
+            
+            for update in transcriber.transcribe_with_progress(audio_path):
+                if update.get("done"):
+                    final_result = update.get("result")
+                    break
+                else:
+                    progress = update.get("progress")
+                    message = update.get("message", "Transcribing with Whisper...")
+                    
+                    # Yield granular updates
+                    yield json.dumps({
+                        "type": "progress",
+                        "message": message,
+                        "progress": progress
+                    })
+            
+            if not final_result:
+                raise RuntimeError("Transcription failed: No result returned")
+            
+            consolidated_text = final_result["text"]
             
             with open(output_file, "w", encoding="utf-8") as f:
                 f.write(consolidated_text)
@@ -105,7 +170,7 @@ def transcribe_youtube(url: str, storage_dir: str):
                 "method": "whisper",
                 "text": consolidated_text,
                 "file_path": output_file,
-                "segments": result["segments"]
+                "segments": final_result["segments"]
             })
         except Exception as whisper_error:
             error_msg = str(whisper_error).split("ERROR:")[-1].strip() if "ERROR:" in str(whisper_error) else str(whisper_error)
