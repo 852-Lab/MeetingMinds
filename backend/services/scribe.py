@@ -61,7 +61,13 @@ class Transcriber:
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
-        # Get audio duration for progress estimation
+        # 1. IMMEDIATE YIELD (Before any slow operations)
+        if self._model is None:
+            yield {"message": "Initializing AI Engine (this may take a moment)...", "progress": 0, "done": False}
+        else:
+            yield {"message": "AI Engine Ready. Analyzing audio...", "progress": 1, "done": False}
+
+        # 2. Potential slow calls (ffmpeg probe on large files)
         duration = get_audio_duration(audio_path)
         
         # Shared state between threads
@@ -83,6 +89,9 @@ class Transcriber:
         thread = threading.Thread(target=run_transcription)
         thread.start()
         
+        # Yield status after thread start
+        yield {"message": "AI Loading Audio into Memory...", "progress": 2, "done": False}
+
         # Yield progress updates while transcription is running
         start_time = time.time()
         if duration:
@@ -92,21 +101,40 @@ class Transcriber:
             # If we can't get duration, just report that work is happening
             estimated_total_time = None
         
-        last_progress = 0
+        last_progress = -1
         while not result_holder["done"]:
-            time.sleep(2)  # Update every 2 seconds
+            time.sleep(1.5)  # Update every 1.5 seconds for higher frequency
             
             if estimated_total_time:
                 elapsed = time.time() - start_time
-                progress = min(95, int((elapsed / estimated_total_time) * 100))
+                progress = min(98, int((elapsed / estimated_total_time) * 100))
                 
-                # Only yield if progress increased
-                if progress > last_progress:
-                    last_progress = progress
-                    yield {"progress": progress, "done": False}
+                # Determine descriptive message based on progress
+                if progress < 10:
+                    msg = "AI Loading Audio into Memory..."
+                elif progress < 30:
+                    msg = "Analyzing audio patterns and language..."
+                elif progress < 60:
+                    msg = "Generating neural transcript segments..."
+                elif progress < 85:
+                    msg = "Refining context and speaker nuances..."
+                else:
+                    msg = "Finalizing AI processing..."
+
+                # Yield if progress increased OR to keep updates flowing with message
+                last_progress = progress
+                yield {"message": msg, "progress": progress, "done": False}
             else:
-                # No duration info, just pulse to show activity
-                yield {"progress": None, "done": False}
+                # No duration info, just pulse descriptive messages
+                elapsed = time.time() - start_time
+                cycle = int(elapsed / 5) % 4
+                msgs = [
+                    "AI Pattern Recognition...",
+                    "Deep Transcription Analysis...",
+                    "Synthesizing Language Context...",
+                    "Optimizing Output segments..."
+                ]
+                yield {"message": msgs[cycle], "progress": None, "done": False}
         
         thread.join()
         
@@ -114,8 +142,12 @@ class Transcriber:
         if result_holder["error"]:
             raise result_holder["error"]
         
+        # Polishing stage
+        yield {"message": "Polishing transcript and aligning timestamps...", "progress": 100, "done": False}
+        time.sleep(0.5)
+        
         # Yield final result
-        yield {"result": result_holder["result"], "progress": 100, "done": True}
+        yield {"result": result_holder["result"], "progress": 100, "done": True, "message": "Transcription complete."}
 
 
 # Global instance (lazy load ensured by property)

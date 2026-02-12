@@ -144,16 +144,18 @@ def transcribe_youtube(url: str, storage_dir: str):
             
             for update in transcriber.transcribe_with_progress(audio_path):
                 if update.get("done"):
-                    final_result = update["result"]
+                    final_result = update.get("result")
                     break
                 else:
                     progress = update.get("progress")
-                    if progress is not None:
-                        yield json.dumps({
-                            "type": "progress",
-                            "message": f"Transcribing with Whisper... {progress}%",
-                            "progress": progress
-                        })
+                    message = update.get("message", "Transcribing with Whisper...")
+                    
+                    # Yield granular updates
+                    yield json.dumps({
+                        "type": "progress",
+                        "message": message,
+                        "progress": progress
+                    })
             
             if not final_result:
                 raise RuntimeError("Transcription failed: No result returned")
