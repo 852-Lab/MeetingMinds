@@ -55,99 +55,131 @@ class Transcriber:
 
     def transcribe_with_progress(self, audio_path: str, language: str = None):
         """
-        Transcribes audio file with progress updates.
-        Yields progress updates during transcription, then yields the final result.
+        Transcribed audio file with progress updates.
+        Handles large files by splitting into 10-minute chunks.
         """
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
-        # 1. IMMEDIATE YIELD (Before any slow operations)
+        # 1. IMMEDIATE YIELD
         if self._model is None:
             yield {"message": "Initializing AI Engine (this may take a moment)...", "progress": 0, "done": False}
         else:
             yield {"message": "AI Engine Ready. Analyzing audio...", "progress": 1, "done": False}
 
-        # 2. Potential slow calls (ffmpeg probe on large files)
         duration = get_audio_duration(audio_path)
-        
-        # Shared state between threads
-        result_holder = {"result": None, "error": None, "done": False}
-        
-        def run_transcription():
-            try:
-                options = {}
-                if language:
-                    options["language"] = language
-                with self.lock:
-                    result_holder["result"] = self.model.transcribe(audio_path, **options)
-            except Exception as e:
-                result_holder["error"] = e
-            finally:
-                result_holder["done"] = True
-        
-        # Start transcription in background thread
-        thread = threading.Thread(target=run_transcription)
-        thread.start()
-        
-        # Yield status after thread start
-        yield {"message": "AI Loading Audio into Memory...", "progress": 2, "done": False}
+        CHUNK_LENGTH = 600  # 10 minutes in seconds
 
-        # Yield progress updates while transcription is running
-        start_time = time.time()
-        if duration:
-            # Estimate transcription takes 2x audio duration (conservative)
-            estimated_total_time = duration * 2
-        else:
-            # If we can't get duration, just report that work is happening
-            estimated_total_time = None
-        
-        last_progress = -1
-        while not result_holder["done"]:
-            time.sleep(1.5)  # Update every 1.5 seconds for higher frequency
+        if duration and duration > CHUNK_LENGTH:
+            num_chunks = int(duration // CHUNK_LENGTH) + (1 if duration % CHUNK_LENGTH > 0 else 0)
+            yield {"message": f"Long audio detected ({duration/60:.1f}m). Processing in {num_chunks} segments...", "progress": 2, "done": False}
             
-            if estimated_total_time:
-                elapsed = time.time() - start_time
-                progress = min(98, int((elapsed / estimated_total_time) * 100))
+            combined_text = ""
+            combined_segments = []
+            
+            for i in range(num_chunks):
+                start_time_sec = i * CHUNK_LENGTH
+                chunk_path = f"{audio_path}_chunk_{i}.mp3"
                 
-                # Determine descriptive message based on progress
-                if progress < 10:
-                    msg = "AI Loading Audio into Memory..."
-                elif progress < 30:
-                    msg = "Analyzing audio patterns and language..."
-                elif progress < 60:
-                    msg = "Generating neural transcript segments..."
-                elif progress < 85:
-                    msg = "Refining context and speaker nuances..."
-                else:
-                    msg = "Finalizing AI processing..."
+                yield {"message": f"Preparing segment {i+1} of {num_chunks}...", "progress": int((i / num_chunks) * 100), "done": False}
+                
+                # Split using FFmpeg
+                try:
+                    (
+                        ffmpeg
+                        .input(audio_path, ss=start_time_sec, t=CHUNK_LENGTH)
+                        .output(chunk_path, acodec='copy', loglevel="error")
+                        .overwrite_output()
+                        .run()
+                    )
+                except Exception as e:
+                    yield {"message": f"Error splitting segment {i+1}: {str(e)}", "progress": None, "done": False}
+                    # Fallback or skip? For now, we continue if possible
+                
+                if not os.path.exists(chunk_path):
+                    continue
 
-                # Yield if progress increased OR to keep updates flowing with message
-                last_progress = progress
-                yield {"message": msg, "progress": progress, "done": False}
-            else:
-                # No duration info, just pulse descriptive messages
-                elapsed = time.time() - start_time
-                cycle = int(elapsed / 5) % 4
-                msgs = [
-                    "AI Pattern Recognition...",
-                    "Deep Transcription Analysis...",
-                    "Synthesizing Language Context...",
-                    "Optimizing Output segments..."
-                ]
-                yield {"message": msgs[cycle], "progress": None, "done": False}
-        
-        thread.join()
-        
-        # Check for errors
-        if result_holder["error"]:
-            raise result_holder["error"]
-        
-        # Polishing stage
-        yield {"message": "Polishing transcript and aligning timestamps...", "progress": 100, "done": False}
-        time.sleep(0.5)
-        
-        # Yield final result
-        yield {"result": result_holder["result"], "progress": 100, "done": True, "message": "Transcription complete."}
+                # Process this chunk
+                result_holder = {"result": None, "error": None, "done": False}
+                def run_chunk_transcription():
+                    try:
+                        options = {"language": language} if language else {}
+                        with self.lock:
+                            result_holder["result"] = self.model.transcribe(chunk_path, **options)
+                    except Exception as e:
+                        result_holder["error"] = e
+                    finally:
+                        result_holder["done"] = True
+
+                thread = threading.Thread(target=run_chunk_transcription)
+                thread.start()
+
+                while not result_holder["done"]:
+                    time.sleep(1.5)
+                    progress = int(((i + 0.5) / num_chunks) * 100) # Simple mid-chunk progress
+                    msg = f"Transcribing segment {i+1} of {num_chunks} (Minutes {int(start_time_sec/60)}-{int((start_time_sec+CHUNK_LENGTH)/60)})..."
+                    yield {"message": msg, "progress": progress, "done": False}
+
+                thread.join()
+                
+                if result_holder["error"]:
+                    # Cleanup if failed
+                    if os.path.exists(chunk_path): os.remove(chunk_path)
+                    raise result_holder["error"]
+
+                # Aggregate
+                chunk_result = result_holder["result"]
+                combined_text += chunk_result["text"] + " "
+                
+                # Adjust segment timestamps
+                for seg in chunk_result["segments"]:
+                    seg["start"] += start_time_sec
+                    seg["end"] += start_time_sec
+                    combined_segments.append(seg)
+
+                # Cleanup chunk
+                if os.path.exists(chunk_path):
+                    os.remove(chunk_path)
+
+            yield {"message": "Merging segments and finalizing...", "progress": 99, "done": False}
+            yield {
+                "result": {"text": combined_text.strip(), "segments": combined_segments},
+                "progress": 100,
+                "done": True,
+                "message": "Transcription complete."
+            }
+        else:
+            # ORIGINAL LOGIC for short files
+            result_holder = {"result": None, "error": None, "done": False}
+            def run_transcription():
+                try:
+                    options = {"language": language} if language else {}
+                    with self.lock:
+                        result_holder["result"] = self.model.transcribe(audio_path, **options)
+                except Exception as e:
+                    result_holder["error"] = e
+                finally:
+                    result_holder["done"] = True
+
+            thread = threading.Thread(target=run_transcription)
+            thread.start()
+            
+            start_time = time.time()
+            estimated_total_time = (duration * 2) if duration else None
+            
+            while not result_holder["done"]:
+                time.sleep(1.5)
+                if estimated_total_time:
+                    progress = min(98, int(((time.time() - start_time) / estimated_total_time) * 100))
+                    yield {"message": "AI Pattern Recognition...", "progress": progress, "done": False}
+                else:
+                    yield {"message": "AI Processing Internal Patterns...", "progress": None, "done": False}
+
+            thread.join()
+            if result_holder["error"]: raise result_holder["error"]
+            
+            yield {"message": "Finalizing...", "progress": 100, "done": False}
+            yield {"result": result_holder["result"], "progress": 100, "done": True, "message": "Transcription complete."}
 
 
 # Global instance (lazy load ensured by property)
