@@ -66,7 +66,7 @@ The application consists of two main components:
 
 ### Security & Privacy
 - **Localhost Only**: All communication between the frontend, backend, and Ollama stays on `localhost`.
-- **Data Persistence**: Uploaded files are stored in the `backend/storage` directory and are not uploaded to any cloud service.
+- **Data Persistence**: Uploaded files are stored in the `src/backend/storage` directory and are not uploaded to any cloud service.
 
 ### Dependencies
 - **Backend**: FastAPI, Uvicorn, OpenAI (for Whisper compatibility), etc.
