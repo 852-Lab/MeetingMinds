@@ -1,0 +1,35 @@
+services:
+  backend:
+    build:
+      context: ./src/backend
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_API_URL=http://ollama:11434/api/generate
+      - SONA_BINARY_PATH=/app/bin/sona
+      - WHISPER_MODEL_PATH=/app/models/ggml-large-v3-turbo.bin
+    volumes:
+      - ./src/backend/storage:/app/storage
+      - ./src/backend/models:/app/models
+    depends_on:
+      - ollama
+
+  frontend:
+    build:
+      context: ./src/frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:8000
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+volumes:
+  ollama_data:
