@@ -2,7 +2,7 @@ import sys
 import os
 
 # Add backend to sys.path
-sys.path.append(os.path.join(os.getcwd(), "backend"))
+sys.path.append(os.path.join(os.getcwd(), "src/backend"))
 
 from services.scribe import transcriber
 
