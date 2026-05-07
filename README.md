@@ -16,38 +16,36 @@ The application consists of two main components:
 1.  **Backend**: A FastAPI server handling audio processing, transcription (Whisper), and summarization (Ollama).
 2.  **Frontend**: A React/Vite web interface for uploading files and viewing results.
 
-## Prerequisites
-
-- **Python 3.10+**
-- **Node.js 18+**
-- **FFmpeg**: Must be installed and available in your PATH.
-- **Ollama**: Must be installed and running locally with the `llama3.2` model (or your preferred model).
-
 ## Getting Started
 
-### Quick Start
+### 1. Prerequisites
+- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
 
-1.  **Start Everything**
+### 2. Setup
+Simply run the following command to start the backend, frontend, and Ollama:
+```bash
+docker compose up --build
+```
 
-    Run the following command in the project root:
+### 3. Pull LLM Model
+Once the containers are running, you need to pull the `gemma3:4b` model into the Ollama container:
+```bash
+docker exec -it meetingminds-ollama-1 ollama pull gemma3:4b
+```
+*(Note: Container name might vary slightly depending on your directory name, use `docker ps` to check)*
 
-    ```bash
-    make start
-    ```
+The application will be available at:
+- Frontend: [http://localhost:5173](http://localhost:5173)
+- Backend API: [http://localhost:8000](http://localhost:8000)
 
-    This will:
-    - Install necessary Python and Node.js dependencies (if needed).
-    - Start the backend server on `http://localhost:8000`.
-    - Start the Vite dev server on `http://localhost:5173`.
+### 4. Whisper Model
+On the first run, the system will look for the Whisper model in `src/backend/models`. If you already have it on your Mac, you can copy it there to save download time:
+```bash
+mkdir -p src/backend/models
+cp ~/Library/Application\ Support/github.com.thewh1teagle.vibe/ggml-large-v3-turbo.bin src/backend/models/
+```
 
-2.  **Individual Components**
-
-    If you want to run components separately:
-    - `make backend`: Starts only the backend.
-    - `make frontend`: Starts only the frontend.
-    - `make install`: Installs all dependencies.
-
-### 3. Usage
+## Usage
 
 1.  Open your browser to `http://localhost:5173`.
 2.  **Upload File**: Upload an audio or video file from your computer.
