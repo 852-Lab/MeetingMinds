@@ -20,19 +20,19 @@ The application consists of two main components:
 
 ### 1. Prerequisites
 - [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
-- [Ollama](https://ollama.ai/) (running on your host machine)
 
-### 2. Setup Ollama
-Ensure Ollama is running and you have the required model:
-```bash
-ollama pull llama3.2
-```
-
-### 3. Launch with Docker
-Simply run the following command to start both the backend and frontend:
+### 2. Setup
+Simply run the following command to start the backend, frontend, and Ollama:
 ```bash
 docker compose up --build
 ```
+
+### 3. Pull LLM Model
+Once the containers are running, you need to pull the `llama3.2` model into the Ollama container:
+```bash
+docker exec -it meetingminds-ollama-1 ollama pull llama3.2
+```
+*(Note: Container name might vary slightly depending on your directory name, use `docker ps` to check)*
 
 The application will be available at:
 - Frontend: [http://localhost:5173](http://localhost:5173)
