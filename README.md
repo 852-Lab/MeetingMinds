@@ -28,9 +28,9 @@ docker compose up --build
 ```
 
 ### 3. Pull LLM Model
-Once the containers are running, you need to pull the `llama3.2` model into the Ollama container:
+Once the containers are running, you need to pull the `gemma3:4b` model into the Ollama container:
 ```bash
-docker exec -it meetingminds-ollama-1 ollama pull llama3.2
+docker exec -it meetingminds-ollama-1 ollama pull gemma3:4b
 ```
 *(Note: Container name might vary slightly depending on your directory name, use `docker ps` to check)*
 

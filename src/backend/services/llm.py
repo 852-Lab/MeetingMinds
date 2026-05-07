@@ -5,7 +5,7 @@ import json
 OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434/api/generate")
 
 class LLMGenerator:
-    def __init__(self, model="llama3.2"):
+    def __init__(self, model="gemma3:4b"):
         self.model = model
 
     def generate(self, prompt: str, system: str = None) -> str:
