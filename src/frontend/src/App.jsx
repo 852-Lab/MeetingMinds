@@ -4,6 +4,7 @@ import MediaInput from './components/MediaInput'
 import TranscriptionView from './components/TranscriptionView'
 import AnalysisView from './components/AnalysisView'
 import StatusOverlay from './components/StatusOverlay'
+import UpcomingFeatures from './components/UpcomingFeatures'
 
 function App() {
   const [status, setStatus] = useState('')
@@ -119,11 +120,13 @@ function App() {
 
       <main className="max-w-5xl mx-auto px-6 pb-24">
         {activeView === 'input' && (
-          <MediaInput 
-            onUpload={handleUpload} 
-            onYouTube={handleYouTube} 
-            loading={loading} 
-          />
+          <div className="animate-fade-in">
+            <MediaInput 
+              onUpload={handleUpload} 
+              onYouTube={handleYouTube} 
+              loading={loading} 
+            />
+          </div>
         )}
 
         {activeView === 'transcript' && (
@@ -140,6 +143,12 @@ function App() {
             type={analysisType} 
             onBack={() => setActiveView('transcript')} 
           />
+        )}
+
+        {activeView === 'input' && (
+          <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <UpcomingFeatures />
+          </div>
         )}
 
         {activeView !== 'input' && (
