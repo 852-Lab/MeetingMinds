@@ -80,7 +80,7 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 # Services Initialization
-llm_client = LLMGenerator(model="llama3.2")
+llm_client = LLMGenerator(model="gemma3:4b")
 
 class TranscribeRequest(BaseModel):
     file_path: str
