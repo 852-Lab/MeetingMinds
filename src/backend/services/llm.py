@@ -1,7 +1,8 @@
+import os
 import requests
 import json
 
-OLLAMA_API_URL = "http://localhost:11434/api/generate"
+OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434/api/generate")
 
 class LLMGenerator:
     def __init__(self, model="llama3.2"):

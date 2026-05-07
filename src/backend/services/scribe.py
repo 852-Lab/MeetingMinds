@@ -8,12 +8,19 @@ import signal
 
 class SonaTranscriber:
     def __init__(self, binary_path=None, model_path=None, port=52341):
-        # Paths
+        # Paths from environment or defaults
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.binary_path = binary_path or os.path.join(base_dir, "bin", "sona")
+        self.binary_path = os.getenv("SONA_BINARY_PATH", binary_path or os.path.join(base_dir, "bin", "sona"))
         
-        # Default model path from Vibe installation on Mac
-        self.model_path = model_path or os.path.expanduser("~/Library/Application Support/github.com.thewh1teagle.vibe/ggml-large-v3-turbo.bin")
+        # Default model path
+        default_model = os.path.join(base_dir, "models", "ggml-large-v3-turbo.bin")
+        self.model_path = os.getenv("WHISPER_MODEL_PATH", model_path or default_model)
+        
+        # Fallback to Mac path if not in Docker and default doesn't exist
+        if not os.path.exists(self.model_path) and not os.path.exists(default_model):
+            mac_path = os.path.expanduser("~/Library/Application Support/github.com.thewh1teagle.vibe/ggml-large-v3-turbo.bin")
+            if os.path.exists(mac_path):
+                self.model_path = mac_path
         
         self.port = port
         self.host = "127.0.0.1"
