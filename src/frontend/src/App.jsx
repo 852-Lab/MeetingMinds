@@ -1,113 +1,78 @@
 import { useState } from 'react'
-import axios from 'axios'
+import { apiService } from './services/api'
+import MediaInput from './components/MediaInput'
+import TranscriptionView from './components/TranscriptionView'
+import AnalysisView from './components/AnalysisView'
+import StatusOverlay from './components/StatusOverlay'
 
 function App() {
-  const [file, setFile] = useState(null)
-  const [url, setUrl] = useState('')
   const [status, setStatus] = useState('')
   const [progress, setProgress] = useState(0)
+  const [loading, setLoading] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [summary, setSummary] = useState('')
-  const [activeTab, setActiveTab] = useState('transcript')
-  const [loading, setLoading] = useState(false)
+  const [activeView, setActiveView] = useState('input') // input, transcript, analysis
+  const [analysisType, setAnalysisType] = useState('')
 
-  const handleFileChange = (e) => {
-    if (e.target.files) {
-      setFile(e.target.files[0])
-    }
-  }
-
-  const handleUpload = async () => {
+  const handleUpload = async (file) => {
     if (!file) return
     setLoading(true)
-    setStatus('Uploading...')
-
-    const formData = new FormData()
-    formData.append('file', file)
-
+    setStatus('Uploading recording...')
+    
     try {
-      const res = await axios.post('http://localhost:8000/api/upload', formData)
-      setStatus(`Uploaded: ${res.data.original_filename}`)
-      // Auto-trigger transcribe (in a real app, maybe separate step)
-      await handleTranscribe(res.data.file_path)
+      const res = await apiService.uploadFile(file)
+      setStatus('Standardizing audio format...')
+      await handleTranscribe(res.file_path)
     } catch (err) {
-      setStatus(`Error: ${err.message}`)
+      setStatus(`Upload failed: ${err.message}`)
       setLoading(false)
     }
   }
 
-  const handleDownload = async () => {
+  const handleYouTube = async (url) => {
     if (!url) return
     setLoading(true)
-    setStatus('Contacting server...')
+    setStatus('Connecting to YouTube...')
     setProgress(0)
 
-    try {
-      const response = await fetch('http://localhost:8000/api/youtube-transcribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() // Keep the last partial line in the buffer
-
-        for (const line of lines) {
-          if (!line.trim()) continue
-          try {
-            const data = JSON.parse(line)
-            if (data.type === 'status') {
-              setStatus(data.message)
-              if (data.progress !== undefined) setProgress(data.progress)
-            } else if (data.type === 'progress') {
-              setProgress(data.progress)
-            } else if (data.type === 'error') {
-              setStatus(`Error: ${data.message}`)
-              setLoading(false)
-              setProgress(0)
-              return
-            } else if (data.type === 'complete') {
-              setTranscript(data.text)
-              setStatus(`Transcription complete (${data.method} method).`)
-              setLoading(false)
-              setProgress(0)
-              return
-            }
-          } catch (e) {
-            console.error('Error parsing stream chunk:', e, line)
-          }
+    const cleanup = apiService.youtubeTranscribeStream(
+      url,
+      (data) => {
+        if (data.type === 'status') {
+          setStatus(data.message)
+          if (data.progress !== undefined) setProgress(data.progress)
+        } else if (data.type === 'progress') {
+          setProgress(data.progress)
+        } else if (data.type === 'error') {
+          setStatus(`YouTube Error: ${data.message}`)
+          setLoading(false)
+          setProgress(0)
+        } else if (data.type === 'complete') {
+          setTranscript(data.text)
+          setStatus('Transcription successful.')
+          setLoading(false)
+          setProgress(0)
+          setActiveView('transcript')
         }
+      },
+      (err) => {
+        setStatus(`Error: ${err.message}`)
+        setLoading(false)
+        setProgress(0)
       }
-    } catch (err) {
-      setStatus(`Error: ${err.message}`)
-      setLoading(false)
-      setProgress(0)
-    }
+    )
+
+    return cleanup
   }
 
   const handleTranscribe = async (filePath) => {
-    setStatus('Transcribing...')
+    setStatus('Transcribing with AI...')
     try {
-      const res = await axios.post('http://localhost:8000/api/transcribe', {
-        file_path: filePath,
-        language: 'en' // Default to English for now, should add selector
-      })
-      setTranscript(res.data.text)
-      setStatus('Transcription complete.')
+      const res = await apiService.transcribeAudio(filePath)
+      setTranscript(res.text)
+      setStatus('Ready to analyze.')
       setLoading(false)
+      setActiveView('transcript')
     } catch (err) {
       setStatus(`Transcription Error: ${err.message}`)
       setLoading(false)
@@ -117,15 +82,14 @@ function App() {
   const handleGenerate = async (type) => {
     if (!transcript) return
     setLoading(true)
-    setStatus(`Generating ${type}...`)
+    setStatus(`Generating ${type === 'meeting_notes' ? 'Meeting Notes' : 'Summary'}...`)
+    setAnalysisType(type)
+    
     try {
-      const res = await axios.post('http://localhost:8000/api/generate', {
-        transcript,
-        template_type: type
-      })
-      setSummary(res.data.content)
-      setActiveTab('summary')
-      setStatus('Generation complete.')
+      const res = await apiService.generateContent(transcript, type)
+      setSummary(res.content)
+      setActiveView('analysis')
+      setStatus('Analysis complete.')
       setLoading(false)
     } catch (err) {
       setStatus(`Generation Error: ${err.message}`)
@@ -134,101 +98,76 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-3xl font-bold mb-6 text-indigo-600">MeetingMind Web</h1>
+    <div className="min-h-screen bg-[#F8FAFC] selection:bg-indigo-100 selection:text-indigo-900">
+      <StatusOverlay status={status} progress={progress} loading={loading} />
 
-        {/* Input Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="p-4 border rounded-lg bg-gray-50">
-            <h2 className="text-lg font-semibold mb-2">Upload File</h2>
-            <input
-              type="file"
-              onChange={handleFileChange}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-            />
-            <button
-              onClick={handleUpload}
-              disabled={!file || loading}
-              className="mt-4 w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 disabled:opacity-50"
+      {/* Hero Header */}
+      <header className="pt-20 pb-16 px-6">
+        <div className="max-w-5xl mx-auto text-center">
+          <div className="inline-flex items-center space-x-2 bg-white px-4 py-2 rounded-2xl shadow-sm border border-gray-100 mb-6">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">AI Core Active</span>
+          </div>
+          <h1 className="text-6xl font-black text-gray-900 mb-6 tracking-tight">
+            Meeting<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">Minds</span>
+          </h1>
+          <p className="text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
+            Transform your voice recordings and videos into actionable insights with state-of-the-art AI.
+          </p>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto px-6 pb-24">
+        {activeView === 'input' && (
+          <MediaInput 
+            onUpload={handleUpload} 
+            onYouTube={handleYouTube} 
+            loading={loading} 
+          />
+        )}
+
+        {activeView === 'transcript' && (
+          <TranscriptionView 
+            transcript={transcript} 
+            onGenerate={handleGenerate} 
+            loading={loading} 
+          />
+        )}
+
+        {activeView === 'analysis' && (
+          <AnalysisView 
+            content={summary} 
+            type={analysisType} 
+            onBack={() => setActiveView('transcript')} 
+          />
+        )}
+
+        {activeView !== 'input' && (
+          <div className="mt-12 flex justify-center">
+            <button 
+              onClick={() => {
+                setActiveView('input')
+                setTranscript('')
+                setSummary('')
+              }}
+              className="px-8 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-gray-600 hover:bg-gray-50 transition-all shadow-sm"
             >
-              Upload & Process
+              Start New Project
             </button>
           </div>
+        )}
+      </main>
 
-          <div className="p-4 border rounded-lg bg-gray-50">
-            <h2 className="text-lg font-semibold mb-2">YouTube URL</h2>
-            <input
-              type="text"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://youtube.com/..."
-              className="w-full p-2 border rounded mb-4"
-            />
-            <button
-              onClick={handleDownload}
-              disabled={!url || loading}
-              className="mt-0 w-full bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 disabled:opacity-50"
-            >
-              Download & Process
-            </button>
+      <footer className="py-12 border-t border-gray-100 bg-white">
+        <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+          <p className="text-gray-400 font-medium">© 2026 MeetingMinds AI. All rights reserved.</p>
+          <div className="flex space-x-8">
+            <a href="#" className="text-gray-400 hover:text-indigo-600 transition-colors font-bold uppercase tracking-widest text-xs">Privacy</a>
+            <a href="#" className="text-gray-400 hover:text-indigo-600 transition-colors font-bold uppercase tracking-widest text-xs">Terms</a>
+            <a href="#" className="text-gray-400 hover:text-indigo-600 transition-colors font-bold uppercase tracking-widest text-xs">Support</a>
           </div>
         </div>
-
-        {/* Status Bar */}
-        {status && (
-          <div className={`bg-blue-50 text-blue-700 p-3 rounded mb-2 text-center ${loading ? 'animate-pulse' : ''}`}>
-            {status}
-          </div>
-        )}
-
-        {/* Progress Bar */}
-        {loading && progress > 0 && (
-          <div className="w-full bg-gray-200 rounded-full h-2.5 mb-6 overflow-hidden">
-            <div
-              className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300 ease-out"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-        )}
-
-        {/* Content Area */}
-        {transcript && (
-          <div>
-            <div className="flex border-b mb-4">
-              <button
-                className={`py-2 px-4 ${activeTab === 'transcript' ? 'border-b-2 border-indigo-600 text-indigo-600 font-bold' : 'text-gray-500'}`}
-                onClick={() => setActiveTab('transcript')}
-              >
-                Transcript
-              </button>
-              <button
-                className={`py-2 px-4 ${activeTab === 'summary' ? 'border-b-2 border-indigo-600 text-indigo-600 font-bold' : 'text-gray-500'}`}
-                onClick={() => setActiveTab('summary')}
-              >
-                Summary / Notes
-              </button>
-            </div>
-
-            <div className="bg-gray-50 p-6 rounded-lg min-h-[300px] whitespace-pre-wrap">
-              {activeTab === 'transcript' ? (
-                <div>
-                  <div className="flex justify-end space-x-2 mb-4">
-                    <button onClick={() => handleGenerate('meeting_notes')} className="text-sm bg-green-600 text-white px-3 py-1 rounded">Generate Notes</button>
-                    <button onClick={() => handleGenerate('summary')} className="text-sm bg-blue-600 text-white px-3 py-1 rounded">Generate Summary</button>
-                  </div>
-                  <p className="text-gray-800 leading-relaxed">{transcript}</p>
-                </div>
-              ) : (
-                <div className="prose max-w-none">
-                  <h3 className="text-xl font-bold mb-4">Generated Content</h3>
-                  <div dangerouslySetInnerHTML={{ __html: summary.replace(/\n/g, '<br/>') }} />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      </footer>
     </div>
   )
 }
