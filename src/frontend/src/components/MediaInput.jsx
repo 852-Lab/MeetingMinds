@@ -23,21 +23,40 @@ const MediaInput = ({ onUpload, onYouTube, loading }) => {
           <h2 className="text-xl font-bold text-gray-800">Upload Recording</h2>
         </div>
         
-        <label className="block w-full">
-          <span className="sr-only">Choose file</span>
+        <div className="relative">
           <input
             type="file"
+            id="file-upload"
             onChange={handleFileChange}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 transition-colors cursor-pointer"
+            className="hidden"
           />
-        </label>
+          <label
+            htmlFor="file-upload"
+            className="flex items-center justify-between w-full p-4 bg-white/50 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all group/upload"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600 group-hover/upload:scale-110 transition-transform">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-700">
+                  {file ? file.name : 'Select Audio/Video'}
+                </p>
+                <p className="text-xs text-gray-400 font-medium">MP3, MP4, WAV supported</p>
+              </div>
+            </div>
+            <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Browse</span>
+          </label>
+        </div>
         
         <button
           onClick={() => onUpload(file)}
           disabled={!file || loading}
-          className="mt-6 w-full bg-white text-indigo-600 border-2 border-indigo-600 py-3 rounded-2xl font-bold hover:bg-indigo-50 disabled:opacity-50 disabled:hover:bg-white transition-all shadow-md active:scale-95"
+          className="mt-6 w-full bg-indigo-600 text-white py-3.5 rounded-2xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-100 active:scale-95"
         >
-          Process File
+          Start Processing
         </button>
       </div>
 
