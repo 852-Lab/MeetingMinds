@@ -66,4 +66,4 @@ backend.log
 frontend.log
 
 # Models
-*.bin
+src/backend/models/
