@@ -67,7 +67,7 @@ class SonaTranscriber:
 
             logger.info(f"Sending transcription request to Sona server for {audio_path}...")
             try:
-                response = requests.post(url, files=files, data=data)
+                response = requests.post(url, files=files, data=data, timeout=600)
                 
                 if response.status_code != 200:
                     logger.error(f"Sona transcription failed ({response.status_code}): {response.text}")
