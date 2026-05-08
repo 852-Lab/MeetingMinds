@@ -6,7 +6,7 @@ services:
       - "8000:8000"
     environment:
       - OLLAMA_API_URL=http://ollama:11434/api/generate
-      - SONA_URL=http://sona:52341/v1
+      - SONA_URL=http://sona:8000/v1
     volumes:
       - ./src/backend/storage:/app/storage
       - ./src/backend/models:/app/models
@@ -15,13 +15,14 @@ services:
       - sona
 
   sona:
-    build:
-      context: ./src/sona
-    platform: linux/amd64
+    image: fedirz/faster-whisper-server:latest-cpu
     ports:
-      - "52341:52341"
+      - "52341:8000"
     volumes:
       - ./src/backend/models:/app/models
+    environment:
+      - WHISPER_MODEL=distil-large-v3
+      - HF_HOME=/app/models
 
   frontend:
     build:

@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class SonaTranscriber:
     def __init__(self, base_url=None):
         # Default to the service name in Docker Compose
-        self.base_url = os.getenv("SONA_URL", base_url or "http://sona:52341/v1")
+        self.base_url = os.getenv("SONA_URL", base_url or "http://sona:8000/v1")
         logger.info(f"SonaTranscriber initialized with base_url: {self.base_url}")
 
     def is_ready(self):
@@ -52,9 +52,9 @@ class SonaTranscriber:
 
         url = f"{self.base_url}/audio/transcriptions"
         
-        # We don't need to specify model path here as Sona server is already running with a model
+        # We don't need to specify model path here as server is already running with a model
         # but the API requires a model name in the request
-        model_name = "ggml-large-v3-turbo.bin"
+        model_name = "whisper-1"
         
         with open(audio_path, "rb") as f:
             files = {"file": f}
