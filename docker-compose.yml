@@ -21,7 +21,7 @@ services:
     volumes:
       - ./src/backend/models:/app/models
     environment:
-      - WHISPER_MODEL=distil-large-v3
+      - WHISPER__MODEL=Systran/faster-distil-whisper-large-v3
       - HF_HOME=/app/models
 
   frontend:
