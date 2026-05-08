@@ -64,3 +64,6 @@ src/backend/storage/*
 *.log
 backend.log
 frontend.log
+
+# Models
+src/backend/models/

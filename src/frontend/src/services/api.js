@@ -14,6 +14,11 @@ export const apiService = {
     return response.data;
   },
 
+  async getSonaStatus() {
+    const response = await api.get('/sona-status');
+    return response.data;
+  },
+
   async transcribeAudio(filePath, language = 'en') {
     const response = await api.post('/transcribe', {
       file_path: filePath,
