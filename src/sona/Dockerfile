@@ -13,8 +13,15 @@ RUN apt-get update && apt-get install -y \
 # Create bin and models directories
 RUN mkdir -p bin models
 
-# Download Sona Linux binary
-RUN curl -L https://github.com/thewh1teagle/sona/releases/download/v0.2.1/sona-linux-amd64 -o bin/sona \
+# Use build args to determine architecture
+ARG TARGETARCH
+
+# Download correct Sona binary based on architecture
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+        curl -L https://github.com/thewh1teagle/sona/releases/download/v0.2.1/sona-linux-arm64 -o bin/sona; \
+    else \
+        curl -L https://github.com/thewh1teagle/sona/releases/download/v0.2.1/sona-linux-amd64 -o bin/sona; \
+    fi \
     && chmod +x bin/sona
 
 # Copy entrypoint script
