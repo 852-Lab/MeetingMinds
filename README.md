@@ -39,7 +39,12 @@ The application will be available at:
 - Backend API: [http://localhost:8000](http://localhost:8000)
 
 ### 4. Whisper Model
-On the first run, the system will look for the Whisper model in `src/backend/models`. If you already have it on your Mac, you can copy it there to save download time:
+On the first run, the `sona` container will automatically download the Whisper model (`ggml-large-v3-turbo.bin`, approx. 800MB) if it's missing from `src/backend/models`. 
+
+> [!NOTE]
+> This download may take a few minutes depending on your internet connection.
+
+If you already have the model on your Mac (e.g. from the Vibe app), you can copy it manually to save time:
 ```bash
 mkdir -p src/backend/models
 cp ~/Library/Application\ Support/github.com.thewh1teagle.vibe/ggml-large-v3-turbo.bin src/backend/models/

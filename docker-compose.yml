@@ -6,13 +6,21 @@ services:
       - "8000:8000"
     environment:
       - OLLAMA_API_URL=http://ollama:11434/api/generate
-      - SONA_BINARY_PATH=/app/bin/sona
-      - WHISPER_MODEL_PATH=/app/models/ggml-large-v3-turbo.bin
+      - SONA_URL=http://sona:52341/v1
     volumes:
       - ./src/backend/storage:/app/storage
       - ./src/backend/models:/app/models
     depends_on:
       - ollama
+      - sona
+
+  sona:
+    build:
+      context: ./src/sona
+    ports:
+      - "52341:52341"
+    volumes:
+      - ./src/backend/models:/app/models
 
   frontend:
     build:
