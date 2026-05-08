@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const MediaInput = ({ onUpload, onYouTube, loading }) => {
+const MediaInput = ({ onUpload, onYouTube, loading, sonaReady }) => {
   const [file, setFile] = useState(null);
   const [url, setUrl] = useState('');
 
@@ -54,10 +54,10 @@ const MediaInput = ({ onUpload, onYouTube, loading }) => {
         
         <button
           onClick={() => onUpload(file)}
-          disabled={!file || loading}
+          disabled={!file || loading || !sonaReady}
           className="mt-6 w-full bg-indigo-600 text-white py-3.5 rounded-2xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-100 active:scale-95"
         >
-          Start Processing
+          {sonaReady ? 'Start Processing' : 'Waiting for Engine...'}
         </button>
       </div>
 
@@ -82,10 +82,10 @@ const MediaInput = ({ onUpload, onYouTube, loading }) => {
         
         <button
           onClick={() => onYouTube(url)}
-          disabled={!url || loading}
+          disabled={!url || loading || !sonaReady}
           className="w-full bg-red-600 text-white py-3.5 rounded-2xl font-bold hover:bg-red-700 disabled:opacity-50 transition-all shadow-lg shadow-red-200 active:scale-95"
         >
-          Extract Transcript
+          {sonaReady ? 'Extract Transcript' : 'Waiting for Engine...'}
         </button>
       </div>
     </div>

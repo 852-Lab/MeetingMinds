@@ -11,6 +11,16 @@ class SonaTranscriber:
         self.base_url = os.getenv("SONA_URL", base_url or "http://sona:52341/v1")
         logger.info(f"SonaTranscriber initialized with base_url: {self.base_url}")
 
+    def is_ready(self):
+        """
+        Check if Sona server is responding (non-blocking).
+        """
+        try:
+            resp = requests.get(f"{self.base_url}/models", timeout=1)
+            return resp.status_code == 200
+        except:
+            return False
+
     def _ensure_server_ready(self):
         """
         Check if Sona server is responding.

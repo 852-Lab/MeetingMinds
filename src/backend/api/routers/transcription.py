@@ -27,6 +27,14 @@ class TranscribeRequest(BaseModel):
     file_path: str
     language: str = None
 
+@router.get("/sona-status")
+def get_sona_status():
+    """
+    Checks if the Sona transcription server is ready.
+    """
+    ready = transcriber.is_ready()
+    return {"ready": ready}
+
 @router.post("/youtube-transcribe")
 async def youtube_transcribe(request: DownloadRequest):
     """

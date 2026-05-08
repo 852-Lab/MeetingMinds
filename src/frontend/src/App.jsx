@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { apiService } from './services/api'
 import MediaInput from './components/MediaInput'
 import TranscriptionView from './components/TranscriptionView'
@@ -14,6 +14,22 @@ function App() {
   const [summary, setSummary] = useState('')
   const [activeView, setActiveView] = useState('input') // input, transcript, analysis
   const [analysisType, setAnalysisType] = useState('')
+  const [sonaReady, setSonaReady] = useState(true)
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const res = await apiService.getSonaStatus()
+        setSonaReady(res.ready)
+      } catch (err) {
+        setSonaReady(false)
+      }
+    }
+
+    checkStatus()
+    const interval = setInterval(checkStatus, 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleUpload = async (file) => {
     if (!file) return
@@ -119,12 +135,26 @@ function App() {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 pb-24">
+        {!sonaReady && (
+          <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center space-x-4 animate-pulse">
+            <div className="p-2 bg-amber-100 rounded-xl text-amber-600">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-amber-800 font-bold">Transcription Engine Initializing</p>
+              <p className="text-amber-700 text-sm font-medium">Downloading AI models. This may take a few minutes on first run. Processing will start automatically once ready.</p>
+            </div>
+          </div>
+        )}
         {activeView === 'input' && (
           <div className="animate-fade-in">
             <MediaInput 
               onUpload={handleUpload} 
               onYouTube={handleYouTube} 
               loading={loading} 
+              sonaReady={sonaReady}
             />
           </div>
         )}
