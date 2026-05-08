@@ -29,6 +29,7 @@ const MediaInput = ({ onUpload, onYouTube, loading }) => {
             id="file-upload"
             onChange={handleFileChange}
             className="hidden"
+            accept=".mp3,.mp4,.wav,.m4a,.aac"
           />
           <label
             htmlFor="file-upload"
@@ -44,7 +45,7 @@ const MediaInput = ({ onUpload, onYouTube, loading }) => {
                 <p className="text-sm font-bold text-gray-700">
                   {file ? file.name : 'Select Audio/Video'}
                 </p>
-                <p className="text-xs text-gray-400 font-medium">MP3, MP4, WAV supported</p>
+                <p className="text-xs text-gray-400 font-medium">MP3, MP4, WAV, M4A supported</p>
               </div>
             </div>
             <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Browse</span>

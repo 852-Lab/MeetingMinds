@@ -37,6 +37,21 @@ def test_upload_endpoint_missing_file():
     response = client.post("/api/upload")
     assert response.status_code == 422
 
+@patch("api.routers.transcription.extract_audio")
+def test_upload_m4a(mock_extract):
+    mock_extract.return_value = "storage/test_processed.wav"
+    
+    # Create a dummy m4a file content
+    file_content = b"fake m4a content"
+    files = {"file": ("test.m4a", file_content, "audio/mp4")}
+    
+    response = client.post("/api/upload", files=files)
+    
+    assert response.status_code == 200
+    assert response.json()["message"] == "Upload successful"
+    assert response.json()["original_filename"] == "test.m4a"
+    assert "_processed.wav" in response.json()["file_path"]
+
 @patch("api.routers.transcription.transcriber.transcribe")
 def test_transcribe_endpoint(mock_transcribe):
     mock_transcribe.return_value = {"text": "Transcribed text", "segments": []}
