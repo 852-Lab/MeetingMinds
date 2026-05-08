@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import shutil
 import os
 import uuid
+import traceback
 from services.audio import extract_audio
 from services.youtube import transcribe_youtube
 from services.scribe import transcriber
@@ -49,6 +50,8 @@ async def upload_file(file: UploadFile = File(...)):
         
         return {"message": "Upload successful", "file_path": processed_path, "original_filename": file.filename}
     except Exception as e:
+        print(f"Upload error: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/transcribe")
@@ -63,4 +66,6 @@ def transcribe_audio(request: TranscribeRequest):
         result = transcriber.transcribe(request.file_path, language=request.language)
         return {"text": result["text"], "segments": result["segments"], "language": request.language}
     except Exception as e:
+        print(f"Transcription error: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

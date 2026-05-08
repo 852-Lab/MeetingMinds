@@ -5,6 +5,7 @@ import requests
 import atexit
 import threading
 import signal
+import traceback
 
 class SonaTranscriber:
     def __init__(self, binary_path=None, model_path=None, port=52341):
@@ -31,6 +32,35 @@ class SonaTranscriber:
         # Register cleanup
         atexit.register(self.stop)
 
+    def _download_model(self):
+        """Downloads the Whisper model if it's missing."""
+        model_url = f"https://huggingface.co/ggerganov/whisper.cpp/resolve/main/{os.path.basename(self.model_path)}"
+        print(f"Downloading model from {model_url}...")
+        
+        os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
+        
+        try:
+            response = requests.get(model_url, stream=True)
+            response.raise_for_status()
+            
+            total_size = int(response.headers.get('content-length', 0))
+            downloaded = 0
+            
+            with open(self.model_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total_size > 0 and downloaded % (1024 * 1024 * 10) == 0: # Print every 10MB
+                            print(f"Downloaded {downloaded // (1024 * 1024)}MB / {total_size // (1024 * 1024)}MB")
+            
+            print(f"Model downloaded successfully to {self.model_path}")
+        except Exception as e:
+            print(f"Error downloading model: {e}")
+            if os.path.exists(self.model_path):
+                os.remove(self.model_path)
+            raise RuntimeError(f"Failed to download Whisper model: {e}")
+
     def _ensure_server_running(self):
         with self._lock:
             # Check if already responding
@@ -53,9 +83,11 @@ class SonaTranscriber:
                         self.model_path = os.path.join(model_dir, models[0])
                         print(f"Using alternative model: {self.model_path}")
                     else:
-                        raise FileNotFoundError(f"Whisper model not found at {self.model_path}. Please download a model using Vibe app or 'sona pull'")
+                        print(f"Model not found at {self.model_path}. Attempting to download...")
+                        self._download_model()
                 else:
-                    raise FileNotFoundError(f"Whisper model not found at {self.model_path}")
+                    print(f"Model directory {model_dir} not found. Attempting to download...")
+                    self._download_model()
 
             print(f"Starting Sona server on port {self.port} with model {os.path.basename(self.model_path)}...")
             

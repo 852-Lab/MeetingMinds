@@ -13,8 +13,13 @@ RUN apt-get update && apt-get install -y \
 # Create bin and storage directories
 RUN mkdir -p bin storage models
 
-# Download Sona Linux binary
-RUN curl -L https://github.com/thewh1teagle/sona/releases/download/v0.2.1/sona-linux-amd64 -o bin/sona \
+# Download Sona binary based on architecture
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+      curl -L https://github.com/thewh1teagle/sona/releases/download/v0.2.1/sona-linux-arm64 -o bin/sona; \
+    else \
+      curl -L https://github.com/thewh1teagle/sona/releases/download/v0.2.1/sona-linux-amd64 -o bin/sona; \
+    fi \
     && chmod +x bin/sona
 
 # Copy requirements and install
