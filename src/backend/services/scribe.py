@@ -95,22 +95,42 @@ class SonaTranscriber:
             cmd = [self.binary_path, "serve", self.model_path, "--port", str(self.port)]
             self._process = subprocess.Popen(
                 cmd, 
-                stdout=subprocess.DEVNULL, 
-                stderr=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE,
+                text=True,
                 preexec_fn=os.setsid # Ensure it can be killed with its group
             )
             
             # Wait for ready
-            for i in range(20):
+            print("Waiting for Sona server to be ready...", flush=True)
+            for i in range(120): # Increase to 120 seconds for very slow systems
                 try:
+                    # Check if process is still running
+                    if self._process.poll() is not None:
+                        stdout, stderr = self._process.communicate()
+                        raise RuntimeError(f"Sona server exited prematurely with code {self._process.returncode}.\nStdout: {stdout}\nStderr: {stderr}")
+
                     resp = requests.get(f"{self.base_url}/models", timeout=1)
                     if resp.status_code == 200:
-                        print("Sona server is ready.")
+                        print("Sona server is ready.", flush=True)
                         return True
-                except:
+                except requests.exceptions.RequestException:
+                    if i % 10 == 0 and i > 0:
+                        print(f"Still waiting for Sona server ({i}s)...", flush=True)
+                    time.sleep(1)
+                except Exception as e:
+                    print(f"Error checking Sona server: {e}", flush=True)
                     time.sleep(1)
             
-            raise RuntimeError("Timed out waiting for Sona server to start")
+            # If we timed out, try to get some logs
+            try:
+                stdout, stderr = self._process.communicate(timeout=1)
+                print(f"Sona Logs (Stdout): {stdout}", flush=True)
+                print(f"Sona Logs (Stderr): {stderr}", flush=True)
+            except:
+                pass
+                
+            raise RuntimeError("Timed out waiting for Sona server to start. Check backend logs for Sona output.")
 
     def transcribe(self, audio_path: str, language: str = None) -> dict:
         """

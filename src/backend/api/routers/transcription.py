@@ -40,13 +40,16 @@ async def upload_file(file: UploadFile = File(...)):
     file_id = str(uuid.uuid4())
     file_ext = os.path.splitext(file.filename)[1]
     temp_path = os.path.join(STORAGE_DIR, f"{file_id}{file_ext}")
+    print(f"Received file upload request: {file.filename} (ID: {file_id})")
     
     try:
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
+        print(f"File saved to {temp_path}. Extracting audio...")
         processed_path = os.path.join(STORAGE_DIR, f"{file_id}_processed.wav")
         extract_audio(temp_path, processed_path)
+        print(f"Audio extraction complete: {processed_path}")
         
         return {"message": "Upload successful", "file_path": processed_path, "original_filename": file.filename}
     except Exception as e:
@@ -63,6 +66,7 @@ def transcribe_audio(request: TranscribeRequest):
         if not os.path.exists(request.file_path):
             raise HTTPException(status_code=404, detail="File not found")
         
+        print(f"Starting transcription for: {request.file_path}")
         result = transcriber.transcribe(request.file_path, language=request.language)
         return {"text": result["text"], "segments": result["segments"], "language": request.language}
     except Exception as e:
