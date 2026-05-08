@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM debian:sid-slim
 
 # Set working directory
 WORKDIR /app
