@@ -17,6 +17,7 @@ services:
   sona:
     build:
       context: ./src/sona
+    platform: linux/amd64
     ports:
       - "52341:52341"
     volumes:

@@ -1,10 +1,10 @@
-FROM debian:sid-slim
+FROM debian:bookworm-slim
 
 # Set working directory
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+RUN apt-get update && apt-get install -y \
     ffmpeg \
     curl \
     ca-certificates \
@@ -13,15 +13,10 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 # Create bin and models directories
 RUN mkdir -p bin models
 
-# Use build args to determine architecture
-ARG TARGETARCH
-
-# Download correct Sona binary based on architecture
-RUN if [ "$TARGETARCH" = "arm64" ]; then \
-        curl -L https://github.com/thewh1teagle/sona/releases/download/v0.2.1/sona-linux-arm64 -o bin/sona; \
-    else \
-        curl -L https://github.com/thewh1teagle/sona/releases/download/v0.2.1/sona-linux-amd64 -o bin/sona; \
-    fi \
+# Download Sona Linux binary (AMD64)
+# We use AMD64 even on ARM Mac because Sona's ARM binary has compatibility issues (SIGILL).
+# Docker for Mac handles the emulation perfectly.
+RUN curl -L https://github.com/thewh1teagle/sona/releases/download/v0.2.1/sona-linux-amd64 -o bin/sona \
     && chmod +x bin/sona
 
 # Copy entrypoint script
