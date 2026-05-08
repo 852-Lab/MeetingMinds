@@ -59,6 +59,9 @@ const MediaInput = ({ onUpload, onYouTube, loading, sonaReady }) => {
         >
           {sonaReady ? 'Start Processing' : 'Waiting for Engine...'}
         </button>
+        <p className="mt-4 text-center text-xs text-gray-400 font-medium">
+          Est. processing: ~1-2m per 10m of audio
+        </p>
       </div>
 
       {/* YouTube Card */}
@@ -87,6 +90,9 @@ const MediaInput = ({ onUpload, onYouTube, loading, sonaReady }) => {
         >
           {sonaReady ? 'Extract Transcript' : 'Waiting for Engine...'}
         </button>
+        <p className="mt-4 text-center text-xs text-gray-400 font-medium">
+          Est. processing: ~1-2m per 10m of audio
+        </p>
       </div>
     </div>
   );

@@ -144,7 +144,10 @@ function App() {
             </div>
             <div>
               <p className="text-amber-800 font-bold">Transcription Engine Initializing</p>
-              <p className="text-amber-700 text-sm font-medium">Downloading AI models. This may take a few minutes on first run. Processing will start automatically once ready.</p>
+              <p className="text-amber-700 text-sm font-medium">
+                Downloading AI models (~1.5GB). This may take 2-5 minutes on the first run. 
+                Once ready, transcription takes about 1-2 minutes for every 10 minutes of audio.
+              </p>
             </div>
           </div>
         )}
