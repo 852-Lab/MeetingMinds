@@ -8,10 +8,12 @@ services:
     environment:
       - OLLAMA_API_URL=http://ollama:11434/api/generate
       - SONA_URL=http://sona:8000/v1
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/meetingminds
     volumes:
       - ./src/backend/storage:/app/storage
       - ./src/backend/models:/app/models
     depends_on:
+      - db
       - ollama
       - sona
 
@@ -38,6 +40,35 @@ services:
     environment:
       - VITE_API_URL=http://localhost:8000
 
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=meetingminds
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  worker:
+    build:
+      context: ./src/backend
+    command: python worker.py
+    restart: unless-stopped
+    environment:
+      - OLLAMA_API_URL=http://ollama:11434/api/generate
+      - SONA_URL=http://sona:8000/v1
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/meetingminds
+    volumes:
+      - ./src/backend/storage:/app/storage
+      - ./src/backend/models:/app/models
+    depends_on:
+      - db
+      - ollama
+      - sona
+
   ollama:
     image: ollama/ollama:latest
     restart: unless-stopped
@@ -48,3 +79,4 @@ services:
 
 volumes:
   ollama_data:
+  postgres_data:
