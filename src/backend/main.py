@@ -1,13 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from api.routers import transcription, generation
+from api.routers import transcription, generation, jobs
+from database.session import engine
+from database.models import Base
+
+# Create tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="MeetingMind Backend")
 
 # Configuration
 STORAGE_DIR = "storage"
-os.makedirs(STORAGE_DIR, exist_ok=True)
+os.makedirs(os.path.join(STORAGE_DIR, "input"), exist_ok=True)
+os.makedirs(os.path.join(STORAGE_DIR, "output"), exist_ok=True)
 
 # CORS
 app.add_middleware(
@@ -21,6 +27,7 @@ app.add_middleware(
 # Include Routers
 app.include_router(transcription.router)
 app.include_router(generation.router)
+app.include_router(jobs.router)
 
 @app.get("/")
 def read_root():
