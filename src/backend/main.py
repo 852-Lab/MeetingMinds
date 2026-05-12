@@ -11,7 +11,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="MeetingMind Backend")
 
 # Configuration
-STORAGE_DIR = "storage"
+STORAGE_DIR = os.getenv("STORAGE_DIR", "data")
 os.makedirs(os.path.join(STORAGE_DIR, "input"), exist_ok=True)
 os.makedirs(os.path.join(STORAGE_DIR, "output"), exist_ok=True)
 

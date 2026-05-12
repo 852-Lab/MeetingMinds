@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("worker")
 
-STORAGE_DIR = "storage"
+STORAGE_DIR = os.getenv("STORAGE_DIR", "data")
 INPUT_DIR = os.path.join(STORAGE_DIR, "input")
 OUTPUT_DIR = os.path.join(STORAGE_DIR, "output")
 

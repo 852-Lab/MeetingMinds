@@ -10,8 +10,9 @@ services:
       - OLLAMA_API_URL=http://ollama:11434/api/generate
       - SONA_URL=http://sona:8000/v1
       - DATABASE_URL=${DATABASE_URL}
+      - STORAGE_DIR=/app/data
     volumes:
-      - ./src/backend/storage:/app/src/backend/storage
+      - ./data:/app/data
       - ./src/backend/models:/app/src/backend/models
     depends_on:
       - db
@@ -63,8 +64,9 @@ services:
       - OLLAMA_API_URL=http://ollama:11434/api/generate
       - SONA_URL=http://sona:8000/v1
       - DATABASE_URL=${DATABASE_URL}
+      - STORAGE_DIR=/app/data
     volumes:
-      - ./src/backend/storage:/app/src/backend/storage
+      - ./data:/app/data
       - ./src/backend/models:/app/src/backend/models
     depends_on:
       - db

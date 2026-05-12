@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["transcription"])
 
-STORAGE_DIR = "storage"
+STORAGE_DIR = os.getenv("STORAGE_DIR", "data")
 INPUT_DIR = os.path.join(STORAGE_DIR, "input")
 os.makedirs(INPUT_DIR, exist_ok=True)
 
