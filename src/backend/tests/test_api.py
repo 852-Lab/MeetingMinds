@@ -1,9 +1,38 @@
 import pytest
+import os
+import tempfile
 from fastapi.testclient import TestClient
-from main import app
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from unittest.mock import patch, MagicMock
 
+test_dir = tempfile.mkdtemp()
+db_path = os.path.join(test_dir, "test_api.db")
+os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
+
+from main import app
+from database.session import Base, get_db
+
+engine = create_engine(f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def override_get_db():
+    try:
+        db = TestingSessionLocal()
+        yield db
+    finally:
+        db.close()
+
 client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def setup_db():
+    app.dependency_overrides[get_db] = override_get_db
+    Base.metadata.create_all(bind=engine)
+    yield
+    Base.metadata.drop_all(bind=engine)
+    app.dependency_overrides.pop(get_db, None)
+
 
 def test_read_root():
     response = client.get("/")
@@ -15,13 +44,11 @@ def test_read_root():
 def test_generate_endpoint(mock_notes, mock_gen):
     mock_notes.return_value = "Mocked Meeting Notes"
     mock_gen.return_value = "Mocked Summary"
-    
-    # Test meeting_notes template
+
     response = client.post("/api/generate", json={"transcript": "Hello", "template_type": "meeting_notes"})
     assert response.status_code == 200
     assert response.json() == {"content": "Mocked Meeting Notes"}
-    
-    # Test summary template
+
     response = client.post("/api/generate", json={"transcript": "Hello", "template_type": "summary"})
     assert response.status_code == 200
     assert response.json() == {"content": "Mocked Summary"}
@@ -37,27 +64,16 @@ def test_upload_endpoint_missing_file():
     response = client.post("/api/upload")
     assert response.status_code == 422
 
-@patch("api.routers.transcription.extract_audio")
-def test_upload_m4a(mock_extract):
-    mock_extract.return_value = "storage/test_processed.wav"
-    
-    # Create a dummy m4a file content
-    file_content = b"fake m4a content"
-    files = {"file": ("test.m4a", file_content, "audio/mp4")}
-    
-    response = client.post("/api/upload", files=files)
-    
-    assert response.status_code == 200
-    assert response.json()["message"] == "Upload successful"
-    assert response.json()["original_filename"] == "test.m4a"
-    assert "_processed.wav" in response.json()["file_path"]
+def test_upload_file():
+    file_content = b"fake audio content"
+    files = {"file": ("test.mp3", file_content, "audio/mpeg")}
 
-@patch("api.routers.transcription.transcriber.transcribe")
-def test_transcribe_endpoint(mock_transcribe):
-    mock_transcribe.return_value = {"text": "Transcribed text", "segments": []}
-    
-    # Mock os.path.exists to return True for the test path
-    with patch("os.path.exists", return_value=True):
-        response = client.post("/api/transcribe", json={"file_path": "test.wav", "language": "en"})
-        assert response.status_code == 200
-        assert response.json()["text"] == "Transcribed text"
+    with patch("shutil.copyfileobj"), patch("os.makedirs"):
+        response = client.post("/api/upload", files=files)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["message"] == "Upload successful, job queued"
+    assert data["original_filename"] == "test.mp3"
+    assert "job_id" in data
+

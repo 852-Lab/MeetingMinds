@@ -13,7 +13,15 @@ dependencies = [
     "requests",
     "youtube-transcript-api",
     "httpx",
+    "sqlalchemy",
+    "psycopg2-binary",
+    "alembic",
+    "pydantic-settings",
 ]
+
+[tool.setuptools]
+packages = { find = { where = ["src/backend"], exclude = ["models*", "storage*"] } }
+package-dir = { "" = "src/backend" }
 
 [project.optional-dependencies]
 dev = [
