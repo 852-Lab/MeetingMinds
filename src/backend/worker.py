@@ -57,8 +57,9 @@ def process_job(db: Session, job: Job):
             # Step 1: Try Captions
             try:
                 logger.info(f"Attempting to fetch captions for {video_id}...")
-                transcript = YouTubeTranscriptApi.get_transcript(video_id)
-                transcript_text = " ".join([s['text'] for s in transcript])
+                api = YouTubeTranscriptApi()
+                transcript = api.fetch(video_id)
+                transcript_text = " ".join([s['text'] if isinstance(s, dict) else s.text for s in transcript])
                 logger.info(f"Successfully fetched captions for {video_id}")
             except Exception as e:
                 logger.info(f"Captions unavailable for {video_id}: {str(e)}. Falling back to AI transcription...")
