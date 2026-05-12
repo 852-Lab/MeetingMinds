@@ -1,7 +1,14 @@
 import pytest
+import os
+import tempfile
 from fastapi.testclient import TestClient
-from main import app
 from unittest.mock import patch, MagicMock
+
+test_dir = tempfile.mkdtemp()
+db_path = os.path.join(test_dir, "test_api.db")
+os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
+
+from main import app
 
 client = TestClient(app)
 

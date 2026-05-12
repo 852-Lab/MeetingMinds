@@ -5,10 +5,11 @@ from api.routers import transcription, generation, jobs
 from database.session import engine
 from database.models import Base
 
-# Create tables
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI(title="MeetingMind Backend")
+
+@app.on_event("startup")
+def create_tables():
+    Base.metadata.create_all(bind=engine)
 
 # Configuration
 STORAGE_DIR = os.getenv("STORAGE_DIR", "data")
