@@ -10,8 +10,7 @@ We use `uv` for Python package management and `pytest` for testing.
 To run all backend tests from the repository root:
 
 ```bash
-export PYTHONPATH=$PYTHONPATH:$(pwd)/src/backend
-uv run pytest src/backend/tests
+uv run pytest
 ```
 
 ### From the Backend Directory (`src/backend`)
