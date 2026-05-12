@@ -1,0 +1,26 @@
+# Environments
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.pyc
+
+# Data & Models (Crucial for speed)
+src/backend/models/
+src/backend/storage/
+storage/
+models/
+
+# Git
+.git/
+.gitignore
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
