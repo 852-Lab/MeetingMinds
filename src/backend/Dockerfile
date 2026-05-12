@@ -15,16 +15,20 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Create storage directory
-RUN mkdir -p storage models
-
 # Install dependencies using uv
-# We copy pyproject.toml and uv.lock from the root context
-COPY pyproject.toml uv.lock ./
+# We copy pyproject.toml, uv.lock, and README.md from the root context
+COPY pyproject.toml uv.lock README.md ./
+# We copy the backend source code so setuptools can find it as defined in pyproject.toml
+COPY src/backend ./src/backend
+
+# Install the project dependencies
 RUN uv pip install --system --no-cache .
 
-# Copy application code from src/backend
-COPY src/backend .
+# Create storage directories in the backend folder
+RUN mkdir -p src/backend/storage src/backend/models
+
+# Set working directory to the backend folder for execution
+WORKDIR /app/src/backend
 
 # Expose port
 EXPOSE 8000

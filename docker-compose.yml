@@ -9,10 +9,10 @@ services:
     environment:
       - OLLAMA_API_URL=http://ollama:11434/api/generate
       - SONA_URL=http://sona:8000/v1
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/meetingminds
+      - DATABASE_URL=${DATABASE_URL}
     volumes:
-      - ./src/backend/storage:/app/storage
-      - ./src/backend/models:/app/models
+      - ./src/backend/storage:/app/src/backend/storage
+      - ./src/backend/models:/app/src/backend/models
     depends_on:
       - db
       - ollama
@@ -45,9 +45,9 @@ services:
     image: postgres:15-alpine
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=meetingminds
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -62,10 +62,10 @@ services:
     environment:
       - OLLAMA_API_URL=http://ollama:11434/api/generate
       - SONA_URL=http://sona:8000/v1
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/meetingminds
+      - DATABASE_URL=${DATABASE_URL}
     volumes:
-      - ./src/backend/storage:/app/storage
-      - ./src/backend/models:/app/models
+      - ./src/backend/storage:/app/src/backend/storage
+      - ./src/backend/models:/app/src/backend/models
     depends_on:
       - db
       - ollama
