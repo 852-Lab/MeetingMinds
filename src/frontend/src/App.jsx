@@ -1,19 +1,14 @@
 import { useState, useEffect } from 'react'
 import { apiService } from './services/api'
 import MediaInput from './components/MediaInput'
-import TranscriptionView from './components/TranscriptionView'
-import AnalysisView from './components/AnalysisView'
 import StatusOverlay from './components/StatusOverlay'
+import JobsList from './components/JobsList'
 import UpcomingFeatures from './components/UpcomingFeatures'
 
 function App() {
   const [status, setStatus] = useState('')
   const [progress, setProgress] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [transcript, setTranscript] = useState('')
-  const [summary, setSummary] = useState('')
-  const [activeView, setActiveView] = useState('input') // input, transcript, analysis
-  const [analysisType, setAnalysisType] = useState('')
   const [sonaReady, setSonaReady] = useState(true)
 
   useEffect(() => {
@@ -37,9 +32,12 @@ function App() {
     setStatus('Uploading recording...')
     
     try {
-      const res = await apiService.uploadFile(file)
-      setStatus('Standardizing audio format...')
-      await handleTranscribe(res.file_path)
+      await apiService.uploadFile(file)
+      setStatus('Success! Your recording is in the queue for processing.')
+      setTimeout(() => {
+        setLoading(false)
+        setStatus('')
+      }, 3000)
     } catch (err) {
       setStatus(`Upload failed: ${err.message}`)
       setLoading(false)
@@ -49,67 +47,17 @@ function App() {
   const handleYouTube = async (url) => {
     if (!url) return
     setLoading(true)
-    setStatus('Connecting to YouTube...')
-    setProgress(0)
-
-    const cleanup = apiService.youtubeTranscribeStream(
-      url,
-      (data) => {
-        if (data.type === 'status') {
-          setStatus(data.message)
-          if (data.progress !== undefined) setProgress(data.progress)
-        } else if (data.type === 'progress') {
-          setProgress(data.progress)
-        } else if (data.type === 'error') {
-          setStatus(`YouTube Error: ${data.message}`)
-          setLoading(false)
-          setProgress(0)
-        } else if (data.type === 'complete') {
-          setTranscript(data.text)
-          setStatus('Transcription successful.')
-          setLoading(false)
-          setProgress(0)
-          setActiveView('transcript')
-        }
-      },
-      (err) => {
-        setStatus(`Error: ${err.message}`)
-        setLoading(false)
-        setProgress(0)
-      }
-    )
-
-    return cleanup
-  }
-
-  const handleTranscribe = async (filePath) => {
-    setStatus('Transcribing with AI...')
-    try {
-      const res = await apiService.transcribeAudio(filePath)
-      setTranscript(res.text)
-      setStatus('Ready to analyze.')
-      setLoading(false)
-      setActiveView('transcript')
-    } catch (err) {
-      setStatus(`Transcription Error: ${err.message}`)
-      setLoading(false)
-    }
-  }
-
-  const handleGenerate = async (type) => {
-    if (!transcript) return
-    setLoading(true)
-    setStatus(`Generating ${type === 'meeting_notes' ? 'Meeting Notes' : 'Summary'}...`)
-    setAnalysisType(type)
+    setStatus('Queueing YouTube video...')
     
     try {
-      const res = await apiService.generateContent(transcript, type)
-      setSummary(res.content)
-      setActiveView('analysis')
-      setStatus('Analysis complete.')
-      setLoading(false)
+      await apiService.youtubeTranscribe(url)
+      setStatus('Success! Video URL is in the queue for processing.')
+      setTimeout(() => {
+        setLoading(false)
+        setStatus('')
+      }, 3000)
     } catch (err) {
-      setStatus(`Generation Error: ${err.message}`)
+      setStatus(`Error: ${err.message}`)
       setLoading(false)
     }
   }
@@ -151,53 +99,25 @@ function App() {
             </div>
           </div>
         )}
-        {activeView === 'input' && (
-          <div className="animate-fade-in">
+        
+        <div className="space-y-12">
+          <section className="animate-fade-in">
             <MediaInput 
               onUpload={handleUpload} 
               onYouTube={handleYouTube} 
               loading={loading} 
               sonaReady={sonaReady}
             />
-          </div>
-        )}
+          </section>
 
-        {activeView === 'transcript' && (
-          <TranscriptionView 
-            transcript={transcript} 
-            onGenerate={handleGenerate} 
-            loading={loading} 
-          />
-        )}
+          <section className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
+            <JobsList />
+          </section>
 
-        {activeView === 'analysis' && (
-          <AnalysisView 
-            content={summary} 
-            type={analysisType} 
-            onBack={() => setActiveView('transcript')} 
-          />
-        )}
-
-        {activeView === 'input' && (
-          <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <section className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <UpcomingFeatures />
-          </div>
-        )}
-
-        {activeView !== 'input' && (
-          <div className="mt-12 flex justify-center">
-            <button 
-              onClick={() => {
-                setActiveView('input')
-                setTranscript('')
-                setSummary('')
-              }}
-              className="px-8 py-3 bg-white border border-gray-200 rounded-2xl font-bold text-gray-600 hover:bg-gray-50 transition-all shadow-sm"
-            >
-              Start New Project
-            </button>
-          </div>
-        )}
+          </section>
+        </div>
       </main>
 
       <footer className="py-12 border-t border-gray-100 bg-white">
