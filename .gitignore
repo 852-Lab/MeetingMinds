@@ -69,4 +69,4 @@ frontend.log
 src/backend/models/
 .env
 
-data/
+storage/

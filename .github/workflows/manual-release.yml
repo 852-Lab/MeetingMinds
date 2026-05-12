@@ -1,0 +1,129 @@
+name: Manual MacOS Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      new_release_published: ${{ steps.semantic.outputs.new_release_published }}
+      new_release_version: ${{ steps.semantic.outputs.new_release_version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Semantic Release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          extra_plugins: |
+            @semantic-release/changelog
+            @semantic-release/git
+
+  build-and-push:
+    name: Build & Push Docker Image
+    needs: release
+    # We run even if no new release was published to ensure 'latest' is updated,
+    # but we use the version if available.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set Docker tags
+        id: tags
+        run: |
+          VERSION=${{ needs.release.outputs.new_release_version }}
+          TAGS="ghcr.io/${{ github.repository }}/frontend:latest"
+          if [ "${{ needs.release.outputs.new_release_published }}" == "true" ]; then
+            TAGS="$TAGS,ghcr.io/${{ github.repository }}/frontend:$VERSION"
+          fi
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./src/frontend
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+
+  generate-client:
+    name: Generate MacOS Client
+    needs: [release, build-and-push]
+    # We only generate the downloadable client if a new release was actually published
+    if: needs.release.outputs.new_release_published == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Frontend container
+        run: |
+          VERSION=${{ needs.release.outputs.new_release_version }}
+          docker run -d --name frontend-app -p 5173:5173 ghcr.io/${{ github.repository }}/frontend:$VERSION
+          
+          echo "Waiting for frontend to start..."
+          timeout 60s bash -c 'until curl -s http://localhost:5173 > /dev/null; do sleep 2; done'
+          echo "Frontend is up!"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate MacOS Client with Nativefier
+        run: |
+          VERSION=${{ needs.release.outputs.new_release_version }}
+          npx nativefier --name "MeetingMinds" \
+            --platform "mac" \
+            --arch "arm64" \
+            --app-version "$VERSION" \
+            --internal-urls ".*" \
+            --honest \
+            "http://localhost:5173" ./out
+
+      - name: Zip Client
+        run: |
+          FOLDER=$(ls ./out | grep MeetingMinds)
+          echo "Found output folder: $FOLDER"
+          cd out/$FOLDER
+          zip -r ../../MeetingMinds-mac-arm64.zip .
+
+      - name: Upload Artifact to Workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: MeetingMinds-mac-arm64
+          path: MeetingMinds-mac-arm64.zip
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.release.outputs.new_release_version }}
+          files: MeetingMinds-mac-arm64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
