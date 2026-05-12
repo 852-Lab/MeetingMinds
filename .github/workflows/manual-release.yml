@@ -30,11 +30,6 @@ jobs:
           extra_plugins: |
             @semantic-release/changelog
             @semantic-release/git
-          # Explicitly define plugins to avoid the default NPM plugin which requires package.json
-          branches: |
-            ["main"]
-          plugins: |
-            ["@semantic-release/commit-analyzer", "@semantic-release/release-notes-generator", "@semantic-release/changelog", "@semantic-release/github", "@semantic-release/git"]
 
   build-and-push:
     name: Build & Push Docker Image
