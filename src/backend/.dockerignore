@@ -1,14 +1,14 @@
-venv/
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-.DS_Store
+**/venv
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.DS_Store
 
-# Exclude large mounted directories
-models/
-storage/
+# Aggressive exclusion for large directories
+**/models
+**/storage
 
 # Exclude documentation
-docs/
-README.md
+**/docs
+**/README.md
