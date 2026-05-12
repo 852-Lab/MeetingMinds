@@ -1,0 +1,83 @@
+name: Manual MacOS Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./src/frontend
+          push: true
+          tags: ghcr.io/${{ github.repository }}/frontend:latest
+
+  generate-client:
+    name: Generate MacOS Client
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Frontend container
+        run: |
+          # Start the frontend container in the background
+          docker run -d --name frontend-app -p 5173:5173 ghcr.io/${{ github.repository }}/frontend:latest
+          
+          # Wait for the app to be ready (Vite dev server or production server)
+          echo "Waiting for frontend to start..."
+          timeout 60s bash -c 'until curl -s http://localhost:5173 > /dev/null; do sleep 2; done'
+          echo "Frontend is up!"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate MacOS Client with Nativefier
+        run: |
+          npx nativefier --name "MeetingMinds" \
+            --platform "mac" \
+            --arch "arm64" \
+            --app-version "1.0.0" \
+            --internal-urls ".*" \
+            --honest \
+            "http://localhost:5173" ./out
+
+      - name: Zip Client
+        run: |
+          # The output folder name depends on nativefier's naming convention
+          # Usually it's "MeetingMinds-darwin-arm64"
+          FOLDER=$(ls ./out | grep MeetingMinds)
+          echo "Found output folder: $FOLDER"
+          cd out/$FOLDER
+          zip -r ../../MeetingMinds-mac-arm64.zip .
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MeetingMinds-mac-arm64
+          path: MeetingMinds-mac-arm64.zip
+          retention-days: 7
