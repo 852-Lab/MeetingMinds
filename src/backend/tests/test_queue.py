@@ -30,17 +30,15 @@ def override_get_db():
     finally:
         db.close()
 
-app.dependency_overrides[get_db] = override_get_db
-
 client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def setup_db():
-    # Create tables
+    app.dependency_overrides[get_db] = override_get_db
     Base.metadata.create_all(bind=engine)
     yield
-    # Drop tables after test
     Base.metadata.drop_all(bind=engine)
+    app.dependency_overrides.pop(get_db, None)
 
 def test_create_upload_job():
     """Test that uploading a file correctly creates a PENDING job."""
