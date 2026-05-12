@@ -1,0 +1,25 @@
+[project]
+name = "meetingminds"
+version = "0.1.0"
+description = "MeetingMinds backend and services"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "python-multipart",
+    "yt-dlp",
+    "ffmpeg-python",
+    "requests",
+    "youtube-transcript-api",
+    "httpx",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src/backend"]
+testpaths = ["src/backend/tests"]
