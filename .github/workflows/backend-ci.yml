@@ -28,12 +28,8 @@ jobs:
         
     - name: Install Python dependencies
       run: |
-        # Use uv to install dependencies
-        uv pip install -r src/backend/requirements.txt
+        uv sync --extra dev
         
     - name: Run backend tests
-      env:
-        PYTHONPATH: src/backend
       run: |
-        # Use uv run to execute pytest
-        uv run pytest src/backend/tests
+        uv run pytest
