@@ -49,3 +49,10 @@ class Job(Base):
             "created_at": self.created_at,
             "updated_at": self.updated_at
         }
+
+class Setting(Base):
+    __tablename__ = "settings"
+
+    key = Column(String, primary_key=True)
+    value = Column(Text, nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
