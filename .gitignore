@@ -67,3 +67,4 @@ frontend.log
 
 # Models
 src/backend/models/
+.env

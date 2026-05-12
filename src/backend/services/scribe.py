@@ -67,7 +67,9 @@ class SonaTranscriber:
 
             logger.info(f"Sending transcription request to Sona server for {audio_path}...")
             try:
-                response = requests.post(url, files=files, data=data, timeout=600)
+                # Use a very long timeout for CPU-bound transcription of long files
+                # 3600s = 1 hour. A 2-hour meeting might take 30-40 mins on some CPUs.
+                response = requests.post(url, files=files, data=data, timeout=3600)
                 
                 if response.status_code != 200:
                     logger.error(f"Sona transcription failed ({response.status_code}): {response.text}")
@@ -75,6 +77,12 @@ class SonaTranscriber:
                     
                 logger.info("Successfully received transcription from Sona server")
                 return response.json()
+            except requests.exceptions.ConnectionError as e:
+                logger.error(f"Connection to Sona server was lost. This usually means the server crashed (OOM) or timed out: {str(e)}")
+                raise RuntimeError("Transcription server crashed or closed the connection. The file might be too large for current memory limits.") from e
+            except requests.exceptions.Timeout as e:
+                logger.error(f"Transcription request timed out after 1 hour: {str(e)}")
+                raise RuntimeError("Transcription timed out. The file is too long for the current server capacity.") from e
             except requests.exceptions.RequestException as e:
                 logger.error(f"Request to Sona server failed: {str(e)}")
                 raise e

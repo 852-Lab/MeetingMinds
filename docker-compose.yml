@@ -2,6 +2,7 @@ services:
   backend:
     build:
       context: ./src/backend
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
@@ -16,18 +17,20 @@ services:
 
   sona:
     image: fedirz/faster-whisper-server:latest-cpu
+    restart: unless-stopped
     ports:
       - "52341:8000"
     volumes:
       - ./src/backend/models:/app/models
     environment:
-      - WHISPER__MODEL=Systran/faster-distil-whisper-large-v3
+      - WHISPER__MODEL=Systran/faster-whisper-small
       - WHISPER__COMPUTE_TYPE=int8
       - HF_HOME=/app/models
 
   frontend:
     build:
       context: ./src/frontend
+    restart: unless-stopped
     ports:
       - "5173:5173"
     depends_on:
@@ -37,6 +40,7 @@ services:
 
   ollama:
     image: ollama/ollama:latest
+    restart: unless-stopped
     ports:
       - "11434:11434"
     volumes:
