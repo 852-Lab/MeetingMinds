@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 # Set working directory
 WORKDIR /app
 
@@ -8,17 +11,20 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     curl \
     ca-certificates \
+    libpq-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 # Create storage directory
 RUN mkdir -p storage models
 
-# Copy requirements and install
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies using uv
+# We copy pyproject.toml and uv.lock from the root context
+COPY pyproject.toml uv.lock ./
+RUN uv pip install --system --no-cache .
 
-# Copy application code
-COPY . .
+# Copy application code from src/backend
+COPY src/backend .
 
 # Expose port
 EXPOSE 8000
