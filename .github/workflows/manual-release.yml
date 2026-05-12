@@ -60,12 +60,15 @@ jobs:
       - name: Set Docker tags
         id: tags
         run: |
+          # Lowercase the repository name
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           VERSION=${{ needs.release.outputs.new_release_version }}
-          TAGS="ghcr.io/${{ github.repository }}/frontend:latest"
+          TAGS="ghcr.io/$REPO_LOWER/frontend:latest"
           if [ "${{ needs.release.outputs.new_release_published }}" == "true" ]; then
-            TAGS="$TAGS,ghcr.io/${{ github.repository }}/frontend:$VERSION"
+            TAGS="$TAGS,ghcr.io/$REPO_LOWER/frontend:$VERSION"
           fi
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          echo "repo_lower=$REPO_LOWER" >> $GITHUB_OUTPUT
 
       - name: Build and push Frontend image
         uses: docker/build-push-action@v5
@@ -90,8 +93,9 @@ jobs:
 
       - name: Run Frontend container
         run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           VERSION=${{ needs.release.outputs.new_release_version }}
-          docker run -d --name frontend-app -p 5173:5173 ghcr.io/${{ github.repository }}/frontend:$VERSION
+          docker run -d --name frontend-app -p 5173:5173 ghcr.io/$REPO_LOWER/frontend:$VERSION
           
           echo "Waiting for frontend to start..."
           timeout 60s bash -c 'until curl -s http://localhost:5173 > /dev/null; do sleep 2; done'
