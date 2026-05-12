@@ -3,7 +3,7 @@ import os
 import shutil
 import logging
 from database.session import SessionLocal, engine
-from database.models import Job, JobStatus, JobType, Base
+from database.models import Job, JobStatus, JobType, Base, TranscriptionProvider
 from services.audio import extract_audio
 from services.youtube import get_video_id
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -28,12 +28,12 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # Create tables if they don't exist
 Base.metadata.create_all(bind=engine)
 
-def _transcribe(audio_path: str, openai_api_key: str | None) -> dict:
+def _transcribe(audio_path: str, openai_api_key: str | None) -> tuple[dict, TranscriptionProvider]:
     if openai_api_key:
         logger.info("OpenAI API key configured — using OpenAI Whisper")
-        return openai_transcriber.transcribe(audio_path, openai_api_key)
+        return openai_transcriber.transcribe(audio_path, openai_api_key), TranscriptionProvider.OPENAI
     logger.info("No OpenAI key — using local Sona transcription")
-    return transcriber.transcribe(audio_path)
+    return transcriber.transcribe(audio_path), TranscriptionProvider.LOCAL
 
 def process_job(db: Session, job: Job):
     job.status = JobStatus.PROCESSING
@@ -52,7 +52,8 @@ def process_job(db: Session, job: Job):
             extract_audio(job.input_path, processed_wav)
 
             logger.info(f"Transcribing {processed_wav}...")
-            result = _transcribe(processed_wav, openai_api_key)
+            result, provider = _transcribe(processed_wav, openai_api_key)
+            job.transcription_provider = provider
             transcript_text = result["text"]
 
         elif job.type == JobType.YOUTUBE_URL:
@@ -71,7 +72,8 @@ def process_job(db: Session, job: Job):
 
                 audio_path = download_youtube_audio(url, INPUT_DIR)
                 logger.info(f"Transcribing downloaded audio: {audio_path}")
-                result = _transcribe(audio_path, openai_api_key)
+                result, provider = _transcribe(audio_path, openai_api_key)
+                job.transcription_provider = provider
                 transcript_text = result["text"]
 
                 if os.path.exists(audio_path):

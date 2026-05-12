@@ -14,12 +14,17 @@ class JobType(str, enum.Enum):
     AUDIO_UPLOAD = "audio_upload"
     YOUTUBE_URL = "youtube_url"
 
+class TranscriptionProvider(str, enum.Enum):
+    OPENAI = "openai"
+    LOCAL = "local"
+
 class Job(Base):
     __tablename__ = "jobs"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     type = Column(Enum(JobType), nullable=False)
     status = Column(Enum(JobStatus), default=JobStatus.PENDING)
+    transcription_provider = Column(String, nullable=True)
     
     # Input info
     input_path = Column(String, nullable=True)  # Path to local file or YouTube URL
