@@ -4,12 +4,14 @@ import MediaInput from './components/MediaInput'
 import StatusOverlay from './components/StatusOverlay'
 import JobsList from './components/JobsList'
 import UpcomingFeatures from './components/UpcomingFeatures'
+import SettingsPanel from './components/SettingsPanel'
 
 function App() {
   const [status, setStatus] = useState('')
   const [progress, setProgress] = useState(0)
   const [loading, setLoading] = useState(false)
   const [sonaReady, setSonaReady] = useState(true)
+  const [openaiKeyConfigured, setOpenaiKeyConfigured] = useState(false)
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -83,7 +85,7 @@ function App() {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 pb-24">
-        {!sonaReady && (
+        {!sonaReady && !openaiKeyConfigured && (
           <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center space-x-4 animate-pulse">
             <div className="p-2 bg-amber-100 rounded-xl text-amber-600">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,20 +95,24 @@ function App() {
             <div>
               <p className="text-amber-800 font-bold">Transcription Engine Initializing</p>
               <p className="text-amber-700 text-sm font-medium">
-                Downloading AI models (~1.5GB). This may take 2-5 minutes on the first run. 
+                Downloading AI models (~1.5GB). This may take 2-5 minutes on the first run.
                 Once ready, transcription takes about 1-2 minutes for every 10 minutes of audio.
               </p>
             </div>
           </div>
         )}
-        
+
         <div className="space-y-12">
           <section className="animate-fade-in">
-            <MediaInput 
-              onUpload={handleUpload} 
-              onYouTube={handleYouTube} 
-              loading={loading} 
-              sonaReady={sonaReady}
+            <SettingsPanel onKeyStatusChange={setOpenaiKeyConfigured} />
+          </section>
+
+          <section className="animate-fade-in">
+            <MediaInput
+              onUpload={handleUpload}
+              onYouTube={handleYouTube}
+              loading={loading}
+              sonaReady={sonaReady || openaiKeyConfigured}
             />
           </section>
 

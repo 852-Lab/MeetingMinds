@@ -3,13 +3,15 @@ import os
 import shutil
 import logging
 from database.session import SessionLocal, engine
-from database.models import Job, JobStatus, JobType, Base
+from database.models import Job, JobStatus, JobType, Base, TranscriptionProvider
 from services.audio import extract_audio
 from services.youtube import get_video_id
 from youtube_transcript_api import YouTubeTranscriptApi
 from services.downloader import download_youtube_audio
 from services.scribe import transcriber
+from services.openai_transcriber import openai_transcriber
 from services.llm import llm_service
+from api.routers.settings import get_decrypted_openai_key
 from sqlalchemy.orm import Session
 
 # Setup logging
@@ -26,34 +28,38 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # Create tables if they don't exist
 Base.metadata.create_all(bind=engine)
 
+def _transcribe(audio_path: str, openai_api_key: str | None) -> tuple[dict, TranscriptionProvider]:
+    if openai_api_key:
+        logger.info("OpenAI API key configured — using OpenAI Whisper")
+        return openai_transcriber.transcribe(audio_path, openai_api_key), TranscriptionProvider.OPENAI
+    logger.info("No OpenAI key — using local Sona transcription")
+    return transcriber.transcribe(audio_path), TranscriptionProvider.LOCAL
+
 def process_job(db: Session, job: Job):
     job.status = JobStatus.PROCESSING
     db.commit()
     db.refresh(job)
-    
+
+    openai_api_key = get_decrypted_openai_key(db)
+
     try:
         transcript_text = ""
-        
+
         if job.type == JobType.AUDIO_UPLOAD:
-            # Input path is the original uploaded file
-            input_ext = os.path.splitext(job.input_path)[1]
             processed_wav = os.path.join(INPUT_DIR, f"{job.id}_processed.wav")
-            
+
             logger.info(f"Extracting audio from {job.input_path} to {processed_wav}...")
             extract_audio(job.input_path, processed_wav)
-            
-            # Step 2: Transcribe
+
             logger.info(f"Transcribing {processed_wav}...")
-            result = transcriber.transcribe(processed_wav)
+            result, provider = _transcribe(processed_wav, openai_api_key)
+            job.transcription_provider = provider
             transcript_text = result["text"]
-            
-            # Cleanup processed wav (optional, but requested all input in 'input')
-            # job.input_path is already in 'input'
-            
+
         elif job.type == JobType.YOUTUBE_URL:
             url = job.input_path
             video_id = get_video_id(url)
-            
+
             # Step 1: Try Captions
             try:
                 logger.info(f"Attempting to fetch captions for {video_id}...")
@@ -63,14 +69,13 @@ def process_job(db: Session, job: Job):
                 logger.info(f"Successfully fetched captions for {video_id}")
             except Exception as e:
                 logger.info(f"Captions unavailable for {video_id}: {str(e)}. Falling back to AI transcription...")
-                
-                # Step 2: Fallback to AI Transcription
+
                 audio_path = download_youtube_audio(url, INPUT_DIR)
                 logger.info(f"Transcribing downloaded audio: {audio_path}")
-                result = transcriber.transcribe(audio_path)
+                result, provider = _transcribe(audio_path, openai_api_key)
+                job.transcription_provider = provider
                 transcript_text = result["text"]
-                
-                # Cleanup audio
+
                 if os.path.exists(audio_path):
                     os.remove(audio_path)
         

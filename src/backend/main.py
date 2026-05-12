@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from api.routers import transcription, generation, jobs
+from api.routers import transcription, generation, jobs, settings
 from database.session import engine
 from database.models import Base
 
@@ -29,6 +29,7 @@ app.add_middleware(
 app.include_router(transcription.router)
 app.include_router(generation.router)
 app.include_router(jobs.router)
+app.include_router(settings.router)
 
 @app.get("/")
 def read_root():

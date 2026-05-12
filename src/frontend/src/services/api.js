@@ -40,5 +40,20 @@ export const apiService = {
 
   getSummaryUrl(jobId) {
     return `${API_BASE_URL}/jobs/${jobId}/summary`;
-  }
+  },
+
+  async getOpenAIKeyStatus() {
+    const response = await api.get('/settings/openai-key');
+    return response.data;
+  },
+
+  async saveOpenAIKey(apiKey) {
+    const response = await api.post('/settings/openai-key', { api_key: apiKey });
+    return response.data;
+  },
+
+  async deleteOpenAIKey() {
+    const response = await api.delete('/settings/openai-key');
+    return response.data;
+  },
 };

@@ -17,6 +17,8 @@ dependencies = [
     "psycopg2-binary",
     "alembic",
     "pydantic-settings",
+    "openai",
+    "cryptography",
 ]
 
 [tool.setuptools]
