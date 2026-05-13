@@ -13,7 +13,7 @@ jobs:
       pull-requests: write
     outputs:
       new_release_published: ${{ steps.semantic.outputs.new_release_published }}
-      new_release_version: ${{ steps.semantic.outputs.new_release_version }}
+      new_release_version: ${{ steps.version_info.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -31,11 +31,22 @@ jobs:
             @semantic-release/changelog
             @semantic-release/git
 
+      - name: Determine Version
+        id: version_info
+        run: |
+          if [ "${{ steps.semantic.outputs.new_release_published }}" == "true" ]; then
+            echo "version=${{ steps.semantic.outputs.new_release_version }}" >> $GITHUB_OUTPUT
+          else
+            # Fallback for manual testing: Use version from package.json or a timestamp
+            PACKAGE_VERSION=$(node -p "require('./src/frontend/package.json').version")
+            echo "version=${PACKAGE_VERSION}-dev" >> $GITHUB_OUTPUT
+          fi
+
   build-and-push:
     name: Build & Push Docker Image
     needs: release
-    # We run even if no new release was published to ensure 'latest' is updated,
-    # but we use the version if available.
+    # Only run if a new release was actually published
+    if: needs.release.outputs.new_release_published == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -75,7 +86,8 @@ jobs:
   generate-client:
     name: Generate MacOS Client (${{ matrix.arch }})
     needs: [release]
-    # if: needs.release.outputs.new_release_published == 'true'
+    # Run if manual trigger OR if a new release was published
+    if: github.event_name == 'workflow_dispatch' || needs.release.outputs.new_release_published == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
