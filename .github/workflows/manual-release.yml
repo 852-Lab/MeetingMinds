@@ -73,11 +73,14 @@ jobs:
           tags: ${{ steps.tags.outputs.tags }}
 
   generate-client:
-    name: Generate MacOS Client
+    name: Generate MacOS Client (${{ matrix.arch }})
     needs: [release, build-and-push]
     # We only generate the downloadable client if a new release was actually published
     if: needs.release.outputs.new_release_published == 'true'
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [arm64, x64]
     steps:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -91,7 +94,7 @@ jobs:
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           VERSION=${{ needs.release.outputs.new_release_version }}
           docker run -d --name frontend-app -p 5173:5173 ghcr.io/$REPO_LOWER/frontend:$VERSION
-          
+
           echo "Waiting for frontend to start..."
           timeout 60s bash -c 'until curl -s http://localhost:5173 > /dev/null; do sleep 2; done'
           echo "Frontend is up!"
@@ -106,7 +109,7 @@ jobs:
           VERSION=${{ needs.release.outputs.new_release_version }}
           npx nativefier --name "MeetingMinds" \
             --platform "mac" \
-            --arch "arm64" \
+            --arch "${{ matrix.arch }}" \
             --app-version "$VERSION" \
             --internal-urls ".*" \
             --honest \
@@ -117,18 +120,18 @@ jobs:
           FOLDER=$(ls ./out | grep MeetingMinds)
           echo "Found output folder: $FOLDER"
           cd out/$FOLDER
-          zip -r ../../MeetingMinds-mac-arm64.zip .
+          zip -r ../../MeetingMinds-mac-${{ matrix.arch }}.zip .
 
       - name: Upload Artifact to Workflow
         uses: actions/upload-artifact@v4
         with:
-          name: MeetingMinds-mac-arm64
-          path: MeetingMinds-mac-arm64.zip
+          name: MeetingMinds-mac-${{ matrix.arch }}
+          path: MeetingMinds-mac-${{ matrix.arch }}.zip
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.release.outputs.new_release_version }}
-          files: MeetingMinds-mac-arm64.zip
+          files: MeetingMinds-mac-${{ matrix.arch }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
