@@ -76,13 +76,22 @@ jobs:
     name: Generate MacOS Client (${{ matrix.arch }})
     needs: [release]
     if: needs.release.outputs.new_release_published == 'true'
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        arch: [arm64, x64]
+        include:
+          - arch: arm64
+            os: macos-14
+          - arch: x64
+            os: macos-13
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -91,10 +100,33 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './src/frontend/package-lock.json'
 
-      - name: Install dependencies
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        env:
+          INSTALLER_PRINT_VERBOSE: 1
+
+      - name: Build Backend Binary
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv venv
+          source .venv/bin/activate
+          uv pip install . pyinstaller
+          cd src/backend
+          # Use pyinstaller to create a single-file executable
+          # We include hidden imports that might be missed
+          pyinstaller --onefile --name backend \
+            --collect-all fastapi \
+            --collect-all uvicorn \
+            --collect-all pydantic \
+            entry_point.py
+          mkdir -p ../../backend-bin
+          cp dist/backend ../../backend-bin/
+
+      - name: Install Frontend dependencies
         run: |
           cd src/frontend
-          npm ci
+          # We use npm install instead of npm ci to handle the recently updated lockfile
+          npm install
 
       - name: Set App Version
         run: |
