@@ -1,3 +1,10 @@
+# [1.3.0-dev.1](https://github.com/davnnis2003/MeetingMinds/compare/v1.2.0...v1.3.0-dev.1) (2026-05-13)
+
+
+### Features
+
+* integrate backend executable into Electron process and update release pipeline to build Python binary ([a5eb290](https://github.com/davnnis2003/MeetingMinds/commit/a5eb29047f419662fc068fc78f65967619e3d3fa))
+
 # [1.2.0](https://github.com/davnnis2003/MeetingMinds/compare/v1.1.0...v1.2.0) (2026-05-13)
 
 
