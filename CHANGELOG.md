@@ -1,3 +1,17 @@
+# [1.2.0](https://github.com/davnnis2003/MeetingMinds/compare/v1.1.0...v1.2.0) (2026-05-13)
+
+
+### Features
+
+* migrate MacOS client generation from nativefier to electron-builder ([45de08c](https://github.com/davnnis2003/MeetingMinds/commit/45de08c937b883e8c9078187a09d55c8975e2a40))
+
+# [1.1.0](https://github.com/davnnis2003/MeetingMinds/compare/v1.0.0...v1.1.0) (2026-05-13)
+
+
+### Features
+
+* add matrix strategy to build MacOS client for both arm64 and x64 architectures ([12c570c](https://github.com/davnnis2003/MeetingMinds/commit/12c570c54839b2b1c3c123fc156f83cd119289c3))
+
 # 1.0.0 (2026-05-12)
 
 
